@@ -62,8 +62,8 @@ def load_data(rootfiles=[""], version="train", split_ratio=0.75, random_seed=42)
     for ifile, rootfile in enumerate(rootfiles):
         # Open the file in uproot
         try:
-            u = uproot.open(rootfile)
-            tree = u[ttree]
+            u = uproot.open(rootfile) #uproot opens the file as a python dictionary
+            tree = u[ttree] #this uses the key identified as "MLinput" to locate the tree of interest in the file
         except KeyError:
             print(f"Skipping file {rootfile}...missing TTree={ttree}")
             continue

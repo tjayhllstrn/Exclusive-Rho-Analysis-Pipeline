@@ -225,7 +225,7 @@ int hipo2tree_pi0(
         for (int ipart = 0; ipart < Nmax; ++ipart) {
             if (pid[ipart] != 22) continue;
 
-            R_e = 0; dE_e = 0;
+            R_e = 0; dE_e = 0;//set every neighbor variable to 0 for the first photon found
             for (int i = 0; i < m_g; ++i) {
                 R_gamma[i] = dE_gamma[i] = Epcal_gamma[i] = m2u_gamma[i] = m2v_gamma[i] = 0;
             }
@@ -238,19 +238,19 @@ int hipo2tree_pi0(
 
             num_photons_0_1 = num_photons_0_2 = num_photons_0_35 = 0;
 
-            // Set vars
+            // Set intrinsic vars - based on the vector taken from the event tree for this event when the GetEntry method is called
             gE       = E[ipart];
             gEpcal   = pcal_e[ipart];
             gTheta   = th[ipart];
             gm2u     = pcal_m2u[ipart];
             gm2v     = pcal_m2v[ipart];
-            photon_has_match = (truepid[ipart] == 22);
+            photon_has_match = (truepid[ipart] == 22);//set based on the montecarlo
 
-            // Find neighbors
+            // Find neighbors - looping through every other particle that's not the first photon chosen (ipart)
             for (int jpart = 0; jpart < Nmax; ++jpart) {
                 if (jpart == ipart) continue;
 
-                double x1, y1, z1, x2, y2, z2;
+                double x1, y1, z1, x2, y2, z2;//figuring out which calorimeter coordinates to use for position coordinate. Based on pcal, ecin,or ecout
                 if (pcal_x[ipart] == -999) {
                     if (ecin_x[ipart] == -999) {
                         x1 = ecout_x[ipart]; y1 = ecout_y[ipart]; z1 = ecout_z[ipart];
@@ -270,16 +270,16 @@ int hipo2tree_pi0(
                     x2 = pcal_x[jpart]; y2 = pcal_y[jpart]; z2 = pcal_z[jpart];
                 }
 
-                TVector3 v1(x1, y1, z1), v2(x2, y2, z2);
+                TVector3 v1(x1, y1, z1), v2(x2, y2, z2);//v1 = particle 1, v2 = particle 1's neighbor
                 float R = v1.Angle(v2);
 
-                if (pid[jpart] == 22) {
+                if (pid[jpart] == 22) { //if this neighbor is a photon, then keep track of how many neighbors are within different angular ranges.
                     if (R < 0.1) num_photons_0_1++;
                     if (R < 0.2) num_photons_0_2++;
                     if (R < 0.35) num_photons_0_35++;
                     for (int i = 0; i < m_g; ++i) {
-                        if (R < R_gamma[i] || R_gamma[i] == 0) {
-                            for (int j = m_g - 1; j > i; --j) {
+                        if (R < R_gamma[i] || R_gamma[i] == 0) {//find the index of the photon neighbor with the lowest angular difference from the initial photon
+                            for (int j = m_g - 1; j > i; --j) {//based on the location of this photon index
                                 R_gamma[j] = R_gamma[j - 1];
                                 dE_gamma[j] = dE_gamma[j - 1];
                                 Epcal_gamma[j] = Epcal_gamma[j - 1];

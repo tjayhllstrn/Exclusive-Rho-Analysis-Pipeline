@@ -2,7 +2,7 @@
 #include "../src/Kinematics.C"
 #include "../src/TreeManager.C"
 
-//clas12root -l -b -q 'macros/pippi0Builder.C("out/test_pippi0/nSidis_005032.root")'
+//clas12root -l -b -q 'macros/pippi0Builder.C("out/pippi0_fall2018_in_pass1/pippi0_fall2018_in_pass1.root")'
 
 int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
     
@@ -23,6 +23,7 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
     int trueparentid[Nmax],trueparentpid[Nmax],trueparentparentid[Nmax],trueparentparentpid[Nmax];
     int sector[Nmax];
     int pid[Nmax], truepid[Nmax];
+    double p_gamma[Nmax];
     
     //link the TBranches to the variables
     EventTree->SetBranchAddress("A",&A);
@@ -66,14 +67,15 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
     EventTree->SetBranchAddress("trueparentpid", &trueparentpid);
     EventTree->SetBranchAddress("trueparentparentid", &trueparentparentid);
     EventTree->SetBranchAddress("trueparentparentpid", &trueparentparentpid);
+    EventTree->SetBranchAddress("p_gamma",&p_gamma);
     TString treename = "";
     //make sure there is no object called pippi0 before making one
     if (f->Get("pippi0")) f->Delete("pippi0*;*");
     treename = "pippi0";
     //make a tree with the name pippi0
     TTree *outtree = new TTree(treename.Data(),"Tree");
-    double z, pT, phih, Mx, xF, xF1, xF2, Mh,eps,gamma;
-    double z_true, pT_true, phih_true, Mx_true, xF_true, xF1_true, xF2_true, Mh_true;
+    double z, pT, phih, Mx, xF, xF1, xF2, Mh,eps,gamma, Mdiphoton, th,cth;
+    double z_true, pT_true, phih_true, Mx_true, xF_true, xF1_true, xF2_true, Mh_true, Mdiphoton_true, th_true,cth_true;
     Mh=0;
     Mh_true=0;
     // Branching kinematic variables for the electron
@@ -104,20 +106,28 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
     outtree->Branch("Mx_true", &Mx_true, "Mx_true/D");
     outtree->Branch("Mh_true", &Mh_true, "Mh_true/D");
 
-    // Initial particles
-    double eBeam = 10.6041;
-    double mE = 0.000511;
-    TLorentzVector init_electron(0,0,sqrt(eBeam*eBeam-mE*mE),eBeam);
-    TLorentzVector init_target(0,0,0,0.938272);
+    outtree->Branch("Mdiphoton", &Mdiphoton, "Mdiphoton/D");
+    outtree->Branch("Mdiphoton_true", &Mdiphoton_true, "Mdiphoton_true/D");
 
+    outtree->Branch("th", &th, "th/D");
+    outtree->Branch("th_true", &th_true, "th_true/D");
 
+    outtree->Branch("cth", &cth, "cth/D");
+    outtree->Branch("cth_true", &cth_true, "cth_true/D");
+
+    int GBTcounter = 0;
     //Calculate all other variables of interest - Mdiphoton, Mh,Mx, z,x,Q2,y,W,x_F,-t
     TLorentzVector pip, diphoton, dihadron, pho1, pho2;
     TLorentzVector truepip, truediphoton, truedihadron, truepho1, truepho2;
     // for loop over all events
     int N = EventTree->GetEntries();
     Kinematics kin;
+
+    // Initial particles
+    double mE = 0.000511;
+    double mp = 0.938272;
     
+    TLorentzVector init_target(0,0,0,mp);
     //looping through events
     for (int ev = 0; ev < N; ++ev) {
         //progress bar
@@ -128,8 +138,9 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
         }
         
         EventTree->GetEntry(ev);
-
-        //figure out if the even is MC or not
+        //figure out if the even is MC or not and determine Beam energy based on run
+        double eBeam = runBeamEnergy(run);
+        TLorentzVector init_electron(0,0,sqrt(eBeam*eBeam-mE*mE),eBeam);
         if(abs(run)==11){
             isMC=1;
         }
@@ -163,24 +174,28 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
         q = init_electron-electron;
         trueq = init_electron-trueelectron;
 
-        
         for(int j = 0; j<Nmax;j++){
             if(pid[j]!=22)continue;
             pho1.SetPxPyPzE(px[j],py[j],pz[j],E[j]);
             truepho1.SetPxPyPzE(truepx[j],truepy[j],truepz[j],trueE[j]);
             for(int k = 0; k<Nmax;k++){
-                if(pid[k]!=22 && k!=j)continue;
+                if(pid[k]!=22||k==j)continue;
                 pho2.SetPxPyPzE(px[k],py[k],pz[k],E[k]);
                 truepho2.SetPxPyPzE(truepx[k],truepy[k],truepz[k],trueE[k]);
-                diphoton = pho1+pho2;
-                truediphoton = truepho1+truepho2;
                     for(int l = 0; l<Nmax;l++){
                         if(pid[l]!=211)continue;
                         pip.SetPxPyPzE(px[l],py[l],pz[l],E[l]);
                         truepip.SetPxPyPzE(truepx[l],truepy[l],truepz[l],trueE[l]);
+                        
+                        diphoton = pho1+pho2;
+                        truediphoton = truepho1+truepho2; 
+                        
                         dihadron = pip+diphoton;
                         truedihadron = truepip+truediphoton;
-                            
+
+                        Mdiphoton = diphoton.M();
+                        Mdiphoton_true = truediphoton.M();
+                        
                         Mh = dihadron.M();
                         Mh_true = truedihadron.M();
                         
@@ -207,8 +222,17 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
                         
                         eps=(1-y-pow(y*gamma,2)/4)/(1-y+pow(y,2)/2+pow(y*gamma,2)/4);
                         gamma = 2*0.938272*x/sqrt(Q2);
+
+                        th = kin.com_th(pip,diphoton);
+                        th_true = kin.com_th(truepip,truediphoton);
+
+                        cth = cos(th);
+                        cth_true = cos(th);
         
-                        if(!(electron.E()>0&&pip.P()>1.25&&diphoton.P()>1.25&&xF1>0&&xF2>0)){
+                        if(!(electron.E()>0&&pip.P()>1.25&&diphoton.P()>1.25&&xF1>0&&xF2>0&&p_gamma[j]>0.78&&p_gamma[k]>0.78)){
+                            if (p_gamma[j]>0.78||p_gamma[k]>0.78){
+                                GBTcounter++;
+                                   }
                             continue;
                         }
                         outtree->Fill();
@@ -219,7 +243,7 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
         }
     }
 
-   
+    cout << "GBT cut " << GBTcounter << " photons" <<endl;
     cout << "Writing Total TTree with " << outtree->GetEntries() << " entries" << endl;
     outtree->Write();
     f->Close();

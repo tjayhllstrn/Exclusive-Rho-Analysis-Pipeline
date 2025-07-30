@@ -66,8 +66,8 @@ int pippimBuilder(const char *input_file="out/test/nSidis_005032.root"){
     if (f->Get("pippim")) f->Delete("pippim*;*");
     treename = "pippim";
     TTree *outtree = new TTree(treename.Data(),"Tree");
-    double z, pT, phih, Mx, xF, xF1, xF2, Mh,eps,gamma;
-    double z_true, pT_true, phih_true, Mx_true, xF_true, xF1_true, xF2_true, Mh_true;
+    double z, pT, phih, Mx, xF, xF1, xF2, Mh,eps,gamma,th,cth;
+    double z_true, pT_true, phih_true, Mx_true, xF_true, xF1_true, xF2_true, Mh_true,th_true,cth_true;
     Mh=0;
     Mh_true=0;
     // Branching kinematic variables for the electron
@@ -97,6 +97,12 @@ int pippimBuilder(const char *input_file="out/test/nSidis_005032.root"){
     outtree->Branch("phi_true", &phih_true, "phi_true/D");
     outtree->Branch("Mx_true", &Mx_true, "Mx_true/D");
     outtree->Branch("Mh_true", &Mh_true, "Mh_true/D");
+
+    outtree->Branch("th", &th, "th/D");
+    outtree->Branch("th_true", &th_true, "th_true/D");
+
+    outtree->Branch("cth", &cth, "cth/D");
+    outtree->Branch("cth_true", &cth_true, "cth_true/D");
 
     // Initial particles
     double eBeam = 10.6041;
@@ -189,6 +195,12 @@ int pippimBuilder(const char *input_file="out/test/nSidis_005032.root"){
                 
                 eps=(1-y-pow(y*gamma,2)/4)/(1-y+pow(y,2)/2+pow(y*gamma,2)/4);
                 gamma = 2*0.938272*x/sqrt(Q2);
+
+                th = kin.com_th(pip,pim);
+                th_true = kin.com_th(truepip,truepim);
+
+                cth = cos(th);
+                cth_true = cos(th);
 
                 if(!(electron.E()>0&&pip.P()>1.25&&pim.P()>1.25&&xF1>0&&xF2>0)){
                     continue;

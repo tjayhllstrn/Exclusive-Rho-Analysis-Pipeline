@@ -82,7 +82,7 @@ files.each do |file|
     puts "Processing file: #{file}"
     filenumber = file[-11..-6]
     #define command to run
-    run_single_cmd = %Q[./scripts/run_single_hipo.rb --type pippim --input #{file} --outdir #{out} -n #{maxev}]
+    run_single_cmd = %Q[./scripts/run_single_hipo.rb --type pippi0 --input #{file} --outdir #{out} -n #{maxev}]
 
     puts "#{GREEN}Running #{filenumber} on:#{RESET} #{out}" 
     unless system(run_single_cmd) #system() runs the command and returns true if the command works.
@@ -96,4 +96,4 @@ puts "#{GREEN}All steps completed successfully!#{RESET}"
 
 
 
-#./scripts/run_multiple.rb --input /lustre24/expphy/cache/clas12/rg-a/production/recon/fall2018/torus-1/pass1/v1/dst/train/nSidis --outdir out/test_pippim -n 100000000
+#./scripts/run_multiple.rb --input /lustre24/expphy/cache/clas12/rg-a/production/recon/fall2018/torus-1/pass1/v1/dst/train/nSidis --outdir out/test_pippi0 -n -1

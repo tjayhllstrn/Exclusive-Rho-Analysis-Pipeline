@@ -13,8 +13,8 @@ def predict(rootfile="",
     # Create a CatBoostClassifier object
     model = CatBoostClassifier()
         
-    # Load model from given directory
-    model.load_model(model_path)
+    # Load pre-trained model from given directory
+    model.load_model(model_path) 
 
     # Load MLInput data
     X=load_data(rootfiles=[rootfile], version="predict")
@@ -58,6 +58,7 @@ def predict(rootfile="",
     tfile.Close()
         
 if __name__ == "__main__":
+    #takes in the inputs and puts them into a list to be flattened into the predict function when run
     args = [arg for arg in sys.argv[1:]]
     predict(*args)
         

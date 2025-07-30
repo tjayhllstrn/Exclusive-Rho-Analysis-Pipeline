@@ -1,0 +1,11 @@
+
+# DO NOT DELETE
+
+./macros/pippi0Builder_C.so: /w/hallb-scshelf2102/clas12/users/tjhellst/clas-ana-scaffold-tyler/./src/Constants.h
+./macros/pippi0Builder_C.so: /w/hallb-scshelf2102/clas12/users/tjhellst/clas-ana-scaffold-tyler/./src/Structs.h
+./macros/pippi0Builder_C.so: /w/hallb-scshelf2102/clas12/users/tjhellst/clas-ana-scaffold-tyler/./src/Kinematics.C
+./macros/pippi0Builder_C.so: /w/hallb-scshelf2102/clas12/users/tjhellst/clas-ana-scaffold-tyler/./src/Kinematics.h
+./macros/pippi0Builder_C.so: /w/hallb-scshelf2102/clas12/users/tjhellst/clas-ana-scaffold-tyler/./src/Constants.h
+./macros/pippi0Builder_C.so: /w/hallb-scshelf2102/clas12/users/tjhellst/clas-ana-scaffold-tyler/./src/TreeManager.C
+./macros/pippi0Builder_C.so: /cvmfs/oasis.opensciencegrid.org/jlab/hallb/clas12/sw/almalinux9-gcc11/local/root/6.30.04/include//RVersion.h /cvmfs/oasis.opensciencegrid.org/jlab/hallb/clas12/sw/almalinux9-gcc11/local/root/6.30.04/include//ROOT/RConfig.hxx /cvmfs/oasis.opensciencegrid.org/jlab/hallb/clas12/sw/almalinux9-gcc11/local/root/6.30.04/include//TClass.h /cvmfs/oasis.opensciencegrid.org/jlab/hallb/clas12/sw/almalinux9-gcc11/local/root/6.30.04/include//TDictAttributeMap.h /cvmfs/oasis.opensciencegrid.org/jlab/hallb/clas12/sw/almalinux9-gcc11/local/root/6.30.04/include//TInterpreter.h /cvmfs/oasis.opensciencegrid.org/jlab/hallb/clas12/sw/almalinux9-gcc11/local/root/6.30.04/include//TROOT.h /cvmfs/oasis.opensciencegrid.org/jlab/hallb/clas12/sw/almalinux9-gcc11/local/root/6.30.04/include//TBuffer.h /cvmfs/oasis.opensciencegrid.org/jlab/hallb/clas12/sw/almalinux9-gcc11/local/root/6.30.04/include//TMemberInspector.h /cvmfs/oasis.opensciencegrid.org/jlab/hallb/clas12/sw/almalinux9-gcc11/local/root/6.30.04/include//TError.h /cvmfs/oasis.opensciencegrid.org/jlab/hallb/clas12/sw/almalinux9-gcc11/local/root/6.30.04/include//RtypesImp.h /cvmfs/oasis.opensciencegrid.org/jlab/hallb/clas12/sw/almalinux9-gcc11/local/root/6.30.04/include//TIsAProxy.h /cvmfs/oasis.opensciencegrid.org/jlab/hallb/clas12/sw/almalinux9-gcc11/local/root/6.30.04/include//TFileMergeInfo.h /cvmfs/oasis.opensciencegrid.org/jlab/hallb/clas12/sw/almalinux9-gcc11/local/root/6.30.04/include//TCollectionProxyInfo.h /cvmfs/oasis.opensciencegrid.org/jlab/hallb/clas12/sw/almalinux9-gcc11/local/root/6.30.04/bin/rootcling
+pippi0Builder_C__ROOTBUILDVERSION= 6.30/04

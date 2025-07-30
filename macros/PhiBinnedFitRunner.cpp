@@ -60,9 +60,9 @@ std::pair<double,double> FitToSin(std::vector<double> x_vals,std::vector<double>
     return std::make_pair(amplitude,amplitude_err);
     
 }
-void PlotSigFit(RooAddPdf model_ext, RooDataSet DS,RooRealVar Mh,std::string hel,int i, int j,std::string outputDir,const char* obs_str,double obsmin,double obsmax,double phimin,double phimax){
+void PlotSigFit(RooAddPdf model_ext, RooDataSet DS,RooRealVar x_var,std::string hel,int i, int j,std::string outputDir,const char* obs_str,double obsmin,double obsmax,double phimin,double phimax){
     using namespace RooFit;
-    RooPlot* frame = Mh.frame(0.4, 1.7);
+    RooPlot* frame = x_var.frame(0.4, 1.7);
     DS.plotOn(frame, MarkerSize(0.5), Name("data"));
     model_ext.plotOn(frame, LineStyle(kDashed), LineColor(kBlack), Name("totalFit"));
     model_ext.plotOn(frame, Components("background"), LineColor(kRed), Name("bkgFit"));
@@ -131,21 +131,15 @@ std::vector<double> PhiBinnedFitRunner::Run(const std::vector<double>& bn_edges,
     std::cout<<"\033[0;32mRunning chi2 phibinning Fit\033[0m\n"<<std::endl;
     // Load TChain
     TChain uncut(treeName);
-    bool containsGreg = false;
     for (const auto& str : inputFiles) {
         uncut.Add(str.c_str());
-        if (str.find("Greg") != std::string::npos) {
-            containsGreg = true;
-        }
     }
     
     const char* cut_str;
     if (strcmp(treeName,"pippi0")==0){
         cut_str = "Mdiphoton<0.16 && 0.115<Mdiphoton && 0.85<Mx && Mx<1.05";
     }
-    else if (containsGreg){
-        cut_str = "M2<0.16 && 0.115<M2 && 0.85<Mx && Mx<1.05";
-    }
+
     else{
         cut_str = "0.85<Mx && Mx<1.05";
     }

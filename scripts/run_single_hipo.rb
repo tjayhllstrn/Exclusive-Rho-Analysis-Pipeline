@@ -8,12 +8,16 @@ GREEN  = "\e[1;32m"
 YELLOW = "\e[1;33m"
 RED    = "\e[1;31m"
 
+# ruby /w/hallb-scshelf2102/clas12/users/tjhellst/clas-ana-scaffold-tyler/scripts/run_single_hipo.rb --type pippi0 --input /cache/clas12/rg-a/production/recon/fall2018/torus+1/pass1/v1/dst/train/nSidis/nSidis_005423.hipo --outdir out/pippi0_fall2018_out_pass1 -n 250
+
+#ruby /w/hallb-scshelf2102/clas12/users/tjhellst/clas-ana-scaffold-tyler/scripts/run_single_hipo.rb --type pippi0 --input /cache/clas12/rg-a/production/recon/fall2018/torus-1/pass1/v1/dst/train/nSidis/nSidis_005032.hipo --outdir out/test -n 250
+
 options = { max_events: 100 }
 
 parser = OptionParser.new do |opts|
   opts.banner = "#{GREEN}Usage: run_single_hipo.rb -t TYPE -i FILE -o DIR [options]#{RESET}"
 
-  opts.on("-t TYPE", "--type=TYPE", "SIDIS type ('pi0' or 'pippim')") do |t|
+  opts.on("-t TYPE", "--type=TYPE", "SIDIS type ('pi0' or 'pippim' or 'pippi0')") do |t|
     options[:type] = t
   end
 
@@ -50,8 +54,8 @@ rescue OptionParser::ParseError => e
   exit 1
 end
 
-unless %w[pi0 pippim].include?(options[:type])
-  STDERR.puts "#{RED}Error: unsupported type '#{options[:type]}'. Supported types are 'pi0' and 'pippim'.#{RESET}"
+unless %w[pi0 pippim pippi0].include?(options[:type])
+  STDERR.puts "#{RED}Error: unsupported type '#{options[:type]}'. Supported types are 'pi0', 'pippi0', and 'pippim'.#{RESET}"
   exit 1
 end
 
@@ -78,25 +82,37 @@ maxev  = options[:max_events]
 type   = options[:type]
 
 # 1) Convert HIPO -> ROOT
-macro = (type == 'pi0' ? 'hipo2tree_pi0' : 'hipo2tree_pippim')
+case type
+when "pi0"
+macro = "hipo2tree_pi0"
+when "pippim"
+macro = "hipo2tree_pippim"
+when "pippi0"
+macro = "hipo2tree_pippi0"
+end
+
+
 hipo_cmd = %Q[clas12root -l -b -q 'macros/#{macro}.C("#{options[:input]}","#{out}",#{maxev})']
 puts "#{GREEN}Running conversion:#{RESET} #{hipo_cmd}"
+
 unless system(hipo_cmd)
   STDERR.puts "#{RED}Error: Conversion with #{macro}.C failed#{RESET}"
   exit 1
 end
 
-# 2) For pi0 only: pick GBT model and run prediction
-if type == 'pi0'
+# 2) For pi0 and pippi0 only: pick GBT model and run prediction
+if (type == 'pi0'||type=='pippi0')
   lc = options[:input].downcase
-  model_type = lc.include?('outbending') ? 'outbending' : 'inbending'
+  model_type = (lc.include?('outbending')||lc.include?('+1')) ? 'outbending' : 'inbending'
   unless %w[inbending outbending].include?(model_type)
     model_type = 'inbending'
     puts "#{YELLOW}Warning: defaulting to 'inbending' model#{RESET}"
   end
 
+    #Choosing the model to run the ML algorithm on'
   model_name = "model_rga_pass1_#{model_type}"
   model_path = File.join('src/gbt/models', model_name)
+    #run the gbt_cmd on the recently outputted root file from step 1. Working on the Event Tree
   gbt_cmd = %Q[python3 src/gbt/predict.py "#{out}" "#{model_path}" "EventTree"]
   puts "#{GREEN}Running GBT prediction with model: #{model_name}#{RESET}"
   unless system(gbt_cmd)
@@ -106,7 +122,17 @@ if type == 'pi0'
 end
 
 # 3) Run builder macro
-builder = (type == 'pi0' ? 'pi0Builder' : 'pippimBuilder')
+
+
+case type
+when "pi0"
+builder = "pi0Builder"
+when "pippim"
+builder = "pippimBuilder"
+when "pippi0"
+builder = "pippi0Builder"
+end
+
 builder_cmd = %Q[clas12root -l -b -q 'macros/#{builder}.C("#{out}")']
 puts "#{GREEN}Running #{builder} on:#{RESET} #{out}"
 unless system(builder_cmd)

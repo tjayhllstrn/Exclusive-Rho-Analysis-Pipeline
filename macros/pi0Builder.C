@@ -1,6 +1,6 @@
 #include "../src/Constants.h"
 #include "../src/Kinematics.C"
-
+//  ./macros/pi0Builder.C  out/
 
 int pi0Builder(const char *input_file="out/test/nSidis_005032.root"){
     
@@ -194,7 +194,7 @@ int pi0Builder(const char *input_file="out/test/nSidis_005032.root"){
                     if (xF_true<0){continue;}
                 }
 
-                if(!(electron.E()>0&&g1.E()>0&&g2.E()>0&&p_gamma[j]>0.78&&p_gamma[k]>0.78&&xF>0)){
+                if(!(electron.E()>0&&g1.E()>0&&g2.E()>0&&p_gamma[j]>0.78&&p_gamma[k]>0.78&&xF>0)){ //makes cut based on GBT prediction. Both photons must have an assigned weight of over 0.78 to be considered a photon
                     continue;
                 }
                 outtree->Fill();
@@ -202,7 +202,7 @@ int pi0Builder(const char *input_file="out/test/nSidis_005032.root"){
         }
     }
 
-   
+    
     cout << "Writing Total TTree with " << outtree->GetEntries() << " entries" << endl;
     outtree->Write();
     f->Close();

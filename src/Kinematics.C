@@ -186,3 +186,7 @@ double Kinematics::com_th(TLorentzVector P1, TLorentzVector P2){
 double Kinematics::z(TLorentzVector init_target, TLorentzVector part, TLorentzVector q){
   return (init_target*part)/(init_target*q);
 }
+
+double Kinematics::t(TLorentzVector init_target,TLorentzVector recoilBaryon){
+    return (recoilBaryon - init_target)*(recoilBaryon - init_target);
+}
