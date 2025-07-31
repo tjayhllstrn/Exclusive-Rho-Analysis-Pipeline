@@ -76,7 +76,6 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
     TTree *outtree = new TTree(treename.Data(),"Tree");
     double z, pT, phih, Mx, xF, xF1, xF2, Mh,eps,gamma, Mdiphoton, th,cth;
     double z_true, pT_true, phih_true, Mx_true, xF_true, xF1_true, xF2_true, Mh_true, Mdiphoton_true, th_true,cth_true;
-    double MCtrue_containsNeutron,truepip_pid,truepho2_pid,truepho1_pid;
     Mh=0;
     Mh_true=0;
     // Branching kinematic variables for the electron
@@ -115,11 +114,6 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
 
     outtree->Branch("cth", &cth, "cth/D");
     outtree->Branch("cth_true", &cth_true, "cth_true/D");
-
-    outtree->Branch("MCtrue_containsNeutron",&MCtrue_containsNeutron,"MCtrue_containsNeutron/D");
-    outtree->Branch("truepho1_pid",&truepho1_pid,"truepho1_pid/D");
-    outtree->Branch("truepho2_pid",&truepho2_pid,"truepho2_pid/D");
-    outtree->Branch("truepip_pid",&truepip_pid,"truepip_pid/D");
 
 
     int GBTcounter = 0;
@@ -180,22 +174,19 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
         trueelectron.SetPxPyPzE(truepx[idx_e],truepy[idx_e],truepz[idx_e],trueE[idx_e]);
         q = init_electron-electron;
         trueq = init_electron-trueelectron;
-        
+
         for(int j = 0; j<Nmax;j++){
             if(pid[j]!=22)continue;
             pho1.SetPxPyPzE(px[j],py[j],pz[j],E[j]);
             truepho1.SetPxPyPzE(truepx[j],truepy[j],truepz[j],trueE[j]);
-            truepho1_pid = truepid[j];
             for(int k = 0; k<Nmax;k++){
                 if(pid[k]!=22||k==j)continue;
                 pho2.SetPxPyPzE(px[k],py[k],pz[k],E[k]);
                 truepho2.SetPxPyPzE(truepx[k],truepy[k],truepz[k],trueE[k]);
-                truepho2_pid = truepid[k];
                     for(int l = 0; l<Nmax;l++){
                         if(pid[l]!=211)continue;
                         pip.SetPxPyPzE(px[l],py[l],pz[l],E[l]);
                         truepip.SetPxPyPzE(truepx[l],truepy[l],truepz[l],trueE[l]);
-                        truepip_pid = truepid[l];
                         
                         diphoton = pho1+pho2;
                         truediphoton = truepho1+truepho2; 
@@ -220,11 +211,6 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
         
                         Mx = (init_electron+init_target-electron-dihadron).M();
                         Mx_true = (init_electron+init_target-trueelectron-truedihadron).M();
-                        MCtrue_containsNeutron = 0;
-                        for(int m = 0; m<Nmax;m++){
-                            if(truepid[m]!=2112)continue;
-                            MCtrue_containsNeutron = 1;
-                        }
         
                         xF = kin.xF(q,dihadron,init_target,W);
                         xF_true = kin.xF(trueq,truedihadron,init_target,trueW);

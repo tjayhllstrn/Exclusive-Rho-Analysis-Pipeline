@@ -10,6 +10,7 @@ from AsymmetryUtils import *
 module_name = sys.argv[1]
 inputs = import_module(module_name).inputs
 import numpy as np
+import ROOT
 
 def main(inputFiles,outputDir,filename,
          fit_type,obs,bin_edges,
@@ -17,6 +18,9 @@ def main(inputFiles,outputDir,filename,
         treeName,exclusiveFit):
     
     ROOT.gROOT.SetBatch(True)
+    ROOT.gSystem.Load("libRooFit")
+    ROOT.gInterpreter.ProcessLine("RooMsgService::instance().setGlobalKillBelow(RooFit::WARNING);")
+    ROOT.gInterpreter.ProcessLine("RooMsgService::instance().setStreamStatus(0, false);")
     
     if not isinstance(inputFiles, list):
         inputFiles = [inputFiles] 

@@ -134,7 +134,8 @@ def simFit(t,obs_str,obs_min,obs_max):
     simPdf = ROOT.RooSimultaneous("simPdf", "simultaneous pdf", {"pos": pos_model, "neg": neg_model}, helicity)
     
     fitResult = simPdf.fitTo(combData,
-                             PrintLevel=-1, Save=True,Timer=True,Extended=True)
+                             PrintLevel=-1, Save=True,
+                             Timer=True,Extended=True)
 
     
     return A.getVal(), A.getError()
@@ -260,7 +261,7 @@ def purityCalc(inputFiles, outputDir,filename,lb,ub,obs_str,obsmin,obsmax,treeNa
         
     #perform fit --------------------------------------------------------------------
     fit_results = model_ext.fitTo(roo_DS,RooFit.Range("fullRange"),
-                              RooFit.Save(),RooFit.PrintLevel(-1),Extended = True)
+                                  RooFit.Save(),RooFit.PrintLevel(-1),Extended = True)
 
     fit_results.Print("v")
     #integrate to find purity --------------------------------------------------------------------
@@ -339,34 +340,21 @@ def purityCalc_mxFit(inputFiles, outputDir,filename,lb,ub,obs_str,obsmin,obsmax,
         chain.Add(f)
 
     #create RooReal variables --------------------------------------------------------------------
-    Mx = RooRealVar("Mx", "Mx", 0.5, 2)
-    Mx.setRange("fullRange",0.5,1.4)
+    Mx = RooRealVar("Mx", "Mx", 0.6, 1.7)
+    Mx.setRange("fullRange",0.6,1.7)
     
-    mu_sig = RooRealVar("m_{sig}", "mu", 0.94,0.9, 1.0)
-    sigl = RooRealVar("#sigma_{L}", "sig_L", 0.06,0.00001, 0.4)
-    sig_sig = RooRealVar("#sigma_{sig}", "sig_R", 0.06,0.00001, 1.0)
-    alphal = RooRealVar("#alpha_{L}", "alphal", 1.57,0.00001,10)
-    alphah = RooRealVar("#alpha_{R}", "alphah", 0.9,0.1,2)
-    nl = RooRealVar("n_{L}", "nl", 1.7,0.00001,10)
-    nh = RooRealVar("n_{R}", "nh", 5,0.00001,15)
-    p1 = RooRealVar("p1", "p1", 0,-1,1)
-    p2 = RooRealVar("p2", "p2", 0,-1,1)
-    p3 = RooRealVar("p3", "p3", 0,-1,1)
-    p4 = RooRealVar("p4", "p4", 0,-1,1)
-    mu_bkg = RooRealVar("m_{bkg}", "mu_bkg", 2,1.2, 3)
-    sig_bkg = RooRealVar("#sigma_{bkg}", "sig_bkg", 0.3,0.00001, 1.0)
+    mu_sig = RooRealVar("mu_{sig}", "mu", 0.94, 0.9, 1.0)
+    sigma_sig = RooRealVar("#sigma_{sig}", "sigma", 0.06, 0.00001, 0.2)
+    mu_bkg = RooRealVar("mu_{bkg}", "mu", 2, 1.2, 3)
+    sigma_bkg = RooRealVar("#sigma_{bkg}", "sigma", 0.06, 0.00001, 0.4)
 
     #create dataset and extended PDF --------------------------------------------------------------------
     print(f"chain Entries = {chain.GetEntries()}")
     N_sig = RooRealVar("N_{sig}", "N_sig", 10000,0,chain.GetEntries())
-    N_bkg = RooRealVar("N_{bkg}", "N_bkg", 10000,0,chain.GetEntries())
+    N_bkg = RooRealVar("N_{bkg}", "N_bkg", 10000,900,chain.GetEntries())
     
-    #sig = ROOT.RooCrystalBall("sig","Double Crystal Ball", Mh,mu,sigl,sigh,alphal,nl,alphah,nh)
-    #sig = ROOT.RooCrystalBall("sig","Right Crystal Ball", Mh,mu,sigh,alphah,nh)
-    sig = ROOT.RooGaussian("sig","gaussian Fit",Mx,mu_sig,sig_sig)
-    
-    pars_pol = ROOT.RooArgList(p1,p2,p3,p4)
-    background = ROOT.RooGaussian("background", "Background", Mx, mu_bkg,sig_bkg)
+    sig = ROOT.RooGaussian("sig","gaussian Fit",Mx,mu_sig,sigma_sig)
+    background = ROOT.RooGaussian("background", "Background", Mx,mu_bkg,sigma_bkg)
     
     # Combine signal and background
     model_ext = ROOT.RooAddPdf("model_ext", "Signal + Background", ROOT.RooArgList(sig, background), ROOT.RooArgList(N_sig,N_bkg))
@@ -383,11 +371,9 @@ def purityCalc_mxFit(inputFiles, outputDir,filename,lb,ub,obs_str,obsmin,obsmax,
         roo_DS = RooDataSet("roo_DS","roo_DS",chain,ROOT.RooArgSet(Mx,Mh,obs),cut_str)
     
     
-    
-        
     #perform fit --------------------------------------------------------------------
     fit_results = model_ext.fitTo(roo_DS,RooFit.Range("fullRange"),
-                              RooFit.Save(),RooFit.PrintLevel(-1),Extended = True)
+                                  RooFit.Save(),RooFit.PrintLevel(-1), Extended = True)
 
     fit_results.Print("v")
     #integrate to find purity --------------------------------------------------------------------
@@ -396,7 +382,7 @@ def purityCalc_mxFit(inputFiles, outputDir,filename,lb,ub,obs_str,obsmin,obsmax,
     
     if save_purity_plot:
         #create frame and plot data and fits
-        frame = Mx.frame(0.5,2)
+        frame = Mx.frame(0.6,2.3)
         frame.SetYTitle("Events")
         roo_DS.plotOn(frame,RooFit.MarkerSize(0.5),
                     RooFit.Name("data")) #RooFit.Binning(50)
@@ -411,11 +397,11 @@ def purityCalc_mxFit(inputFiles, outputDir,filename,lb,ub,obs_str,obsmin,obsmax,
         canvas = ROOT.TCanvas()
         canvas.Divide(2,1)
         
-        leg = ROOT.TLegend(0.55,0.55,0.85,0.85) #xmin,ymin,xmax.ymax
+        leg = ROOT.TLegend(0.65,0.55,0.85,0.85) #xmin,ymin,xmax.ymax
         leg.AddEntry(frame.findObject("data"),"Data","p") #name of object being referred, "title shown", (fit line or point)
-        leg.AddEntry(frame.findObject("totalFit"),"sig+bkg Fit","l")
-        leg.AddEntry(frame.findObject("sigFit"),"sig Gauss Function","l")
-        leg.AddEntry(frame.findObject("bkgFit"),"bkg Gauss Function","l")
+        leg.AddEntry(frame.findObject("totalFit"),"Sig+Bkg Fit","l")
+        leg.AddEntry(frame.findObject("sigFit"),"Signal","l")
+        leg.AddEntry(frame.findObject("bkgFit"),"Background","l")
         leg.SetBorderSize(0)
         
         pad1 = canvas.cd(1)
@@ -423,7 +409,7 @@ def purityCalc_mxFit(inputFiles, outputDir,filename,lb,ub,obs_str,obsmin,obsmax,
         pad1 = canvas.cd(2)
         pad1.SetPad(0.815,0.0,1.0,1.0)
 
-        text=ROOT.TLatex(0.525,0.45,f"u = {round(u,4)}\pm{round(u_err,4)}")
+        text=ROOT.TLatex(0.515,0.45,f"u = {round(u,4)}\pm{round(u_err,4)}")
         text.SetNDC(True)
         text.SetTextSize(0.06)
         text.SetTextColor(ROOT.kBlack)
