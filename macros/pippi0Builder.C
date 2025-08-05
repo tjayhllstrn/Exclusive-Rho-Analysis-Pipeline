@@ -76,7 +76,9 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
     TTree *outtree = new TTree(treename.Data(),"Tree");
     double z, pT, phih, Mx, xF, xF1, xF2, Mh,eps,gamma, Mdiphoton, th,cth;
     double z_true, pT_true, phih_true, Mx_true, xF_true, xF1_true, xF2_true, Mh_true, Mdiphoton_true, th_true,cth_true;
-    double MCtrue_containsNeutron,truepip_pid,truepho2_pid,truepho1_pid;
+    double MCtrue_containsNeutron,truepip_pid,truepho2_pid,truepho1_pid,trueelectron_pid;
+    double MCphoparent_samepi0,MCpippi0parent_samerho,truepipparent_pid,truepipparent_id,truepho2parentparent_pid,truepho2parentparent_id,truepho2parent_pid;
+    double truepho2parent_id,truepho1parentparent_pid,truepho1parentparent_id,truepho1parent_pid,truepho1parent_id;
     Mh=0;
     Mh_true=0;
     // Branching kinematic variables for the electron
@@ -120,6 +122,20 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
     outtree->Branch("truepho1_pid",&truepho1_pid,"truepho1_pid/D");
     outtree->Branch("truepho2_pid",&truepho2_pid,"truepho2_pid/D");
     outtree->Branch("truepip_pid",&truepip_pid,"truepip_pid/D");
+    outtree->Branch("trueelectron_pid",&trueelectron_pid,"trueelectron_pid/D");
+
+    outtree->Branch("MCpippi0parent_samerho",&MCpippi0parent_samerho,"MCpippi0parent_samerho/D");
+    outtree->Branch("MCphoparent_samepi0",&MCphoparent_samepi0,"MCphoparent_samepi0/D");
+    outtree->Branch("truepipparent_pid",&truepipparent_pid,"truepipparent_pid/D");
+    outtree->Branch("truepipparent_id",&truepipparent_id,"truepipparent_id/D");
+    outtree->Branch("truepho2parentparent_pid",&truepho2parentparent_pid,"truepho2parentparent_pid/D");
+    outtree->Branch("truepho2parentparent_id",&truepho2parentparent_id,"truepho2parentparent_id/D");
+    outtree->Branch("truepho2parent_pid",&truepho2parent_pid,"truepho2parent_pid/D");
+    outtree->Branch("truepho2parent_id",&truepho2parent_id,"truepho2parent_id/D");
+    outtree->Branch("truepho1parentparent_pid",&truepho1parentparent_pid,"truepho1parentparent_pid/D");
+    outtree->Branch("truepho1parentparent_id",&truepho1parentparent_id,"truepho1parentparent_id/D");
+    outtree->Branch("truepho1parent_pid",&truepho1parent_pid,"truepho1parent_pid/D");
+    outtree->Branch("truepho1parent_id",&truepho1parent_id,"truepho1parent_id/D");
 
 
     int GBTcounter = 0;
@@ -180,22 +196,42 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
         trueelectron.SetPxPyPzE(truepx[idx_e],truepy[idx_e],truepz[idx_e],trueE[idx_e]);
         q = init_electron-electron;
         trueq = init_electron-trueelectron;
+        trueelectron_pid = truepid[idx_e];
         
         for(int j = 0; j<Nmax;j++){
             if(pid[j]!=22)continue;
             pho1.SetPxPyPzE(px[j],py[j],pz[j],E[j]);
             truepho1.SetPxPyPzE(truepx[j],truepy[j],truepz[j],trueE[j]);
             truepho1_pid = truepid[j];
+            truepho1parent_id = trueparentid[j];
+            truepho1parent_pid = trueparentpid[j];
+            truepho1parentparent_id = trueparentparentid[j];
+            truepho1parentparent_pid = trueparentparentpid[j];
             for(int k = 0; k<Nmax;k++){
                 if(pid[k]!=22||k==j)continue;
                 pho2.SetPxPyPzE(px[k],py[k],pz[k],E[k]);
                 truepho2.SetPxPyPzE(truepx[k],truepy[k],truepz[k],trueE[k]);
                 truepho2_pid = truepid[k];
+                truepho2parent_id = trueparentid[k];
+                truepho2parent_pid = trueparentpid[k];
+                truepho2parentparent_id = trueparentparentid[k];
+                truepho2parentparent_pid = trueparentparentpid[k];
                     for(int l = 0; l<Nmax;l++){
                         if(pid[l]!=211)continue;
                         pip.SetPxPyPzE(px[l],py[l],pz[l],E[l]);
                         truepip.SetPxPyPzE(truepx[l],truepy[l],truepz[l],trueE[l]);
                         truepip_pid = truepid[l];
+                        truepipparent_id = trueparentid[l];
+                        truepipparent_pid = trueparentpid[l];
+
+                        MCphoparent_samepi0 = 0;
+                        MCpippi0parent_samerho = 0;
+                        if(truepho1parent_id == truepho2parent_id && truepho1parent_pid ==111){
+                            MCphoparent_samepi0 = 1;
+                            if(truepho1parentparent_id==truepipparent_id && truepipparent_pid == 213){
+                                MCpippi0parent_samerho = 1;
+                            }
+                        }
                         
                         diphoton = pho1+pho2;
                         truediphoton = truepho1+truepho2; 

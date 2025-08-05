@@ -60,7 +60,7 @@ std::pair<double,double> FitToSin(std::vector<double> x_vals,std::vector<double>
     return std::make_pair(amplitude,amplitude_err);
     
 }
-void PlotSigFit(RooAddPdf model_ext, RooDataSet DS,RooPlot* frame,std::string hel,int i, int j,std::string outputDir,const char* obs_str,double obsmin,double obsmax,double phimin,double phimax){
+void PlotSigFit(RooAddPdf model_ext, RooDataSet DS,RooPlot* frame,std::string hel,int i, int j,std::string outputDir,const char* obs_str,double obsmin,double obsmax,double phimin,double phimax,const char* flag){
     using namespace RooFit;
     DS.plotOn(frame, MarkerSize(0.5), Name("data"));
     model_ext.plotOn(frame, LineStyle(kDashed), LineColor(kBlack), Name("totalFit"));
@@ -121,7 +121,7 @@ void PlotSigFit(RooAddPdf model_ext, RooDataSet DS,RooPlot* frame,std::string he
     }
     
     param_box->Draw();
-    c->SaveAs(Form("%s/phiBinningFits/%s_fit_%s%d_phi%d.png", outputDir.c_str(),hel.c_str(),obs_str,(int)i, (int)j));
+    c->SaveAs(Form("%s/phiBinningFits_%s/%s_fit_%s%d_phi%d.png", outputDir.c_str(),flag,hel.c_str(),obs_str,(int)i, (int)j));
 }
 
 
@@ -197,7 +197,7 @@ std::vector<double> PhiBinnedFitRunner::Run(const std::vector<double>& bn_edges,
         line->Draw();
         lines.push_back(line);
             }
-    c2D.SaveAs(Form("%s/Chi2_2D%sbinningPlot.png",outputDir.c_str(),obs_str));
+    c2D.SaveAs(Form("%s/MhChi2_2D%sbinningPlot.png",outputDir.c_str(),obs_str));
 
     //Loop over bins
     std::vector<double> results;
@@ -242,7 +242,7 @@ std::vector<double> PhiBinnedFitRunner::Run(const std::vector<double>& bn_edges,
             double N_sig_neg = N_sig.getVal();
             double N_sig_neg_err = N_sig.getError();
             RooPlot* frame_neg = Mh.frame(0.4, 1.7);
-            PlotSigFit(model_ext, neg_DS,frame_neg,"neg",i,j,outputDir,obs_str,obsmin,obsmax,phimin,phimax);
+            PlotSigFit(model_ext, neg_DS,frame_neg,"neg",i,j,outputDir,obs_str,obsmin,obsmax,phimin,phimax,"Mh");
             delete frame_neg;
             
             //long N_bkg_neg = N_bkg.getVal();
@@ -250,7 +250,7 @@ std::vector<double> PhiBinnedFitRunner::Run(const std::vector<double>& bn_edges,
             double N_sig_pos = N_sig.getVal();
             double N_sig_pos_err = N_sig.getError();
             RooPlot* frame_pos = Mh.frame(0.4, 1.7);
-            PlotSigFit(model_ext, pos_DS,frame_pos,"pos",i,j,outputDir,obs_str,obsmin,obsmax,phimin,phimax);
+            PlotSigFit(model_ext, pos_DS,frame_pos,"pos",i,j,outputDir,obs_str,obsmin,obsmax,phimin,phimax,"Mh");
             delete frame_pos;
 
             
@@ -329,8 +329,8 @@ std::vector<double> PhiBinnedFitRunner::Run(const std::vector<double>& bn_edges,
         
         
     }
-    Nasym_c->SaveAs(Form("%s/%sNasym_grid.png",outputDir.c_str(),obs_str));
-    SinCanvas->SaveAs(Form("%s/PhiBinningSinFits_%s.png",outputDir.c_str(),obs_str));
+    Nasym_c->SaveAs(Form("%s/Mh%sNasym_grid.png",outputDir.c_str(),obs_str));
+    SinCanvas->SaveAs(Form("%s/MhPhiBinningSinFits_%s.png",outputDir.c_str(),obs_str));
     delete SinCanvas;
     delete Nasym_c;
     return results;
@@ -363,10 +363,10 @@ std::vector<double> PhiBinnedFitRunner::Run_mxFit(const std::vector<double>& bn_
     RooRealVar Mx("Mx", "Mx", 0.6, 1.7); 
     Mx.setRange("fullRange", 0.6, 1.7); 
     
-    RooRealVar mu_sig("mu_{sig}", "mu", 0.94, 0.9, 1.0);
-    RooRealVar sigma_sig("#sigma_{sig}", "sigma", 0.06, 0.00001, 0.2);
+    RooRealVar mu_sig("mu_{sig}", "mu", 0.94, 0.85, 1.2);
+    RooRealVar sigma_sig("#sigma_{sig}", "sigma", 0.06, 0.01, 0.13);
     RooRealVar mu_bkg("mu_{bkg}", "mu", 2, 1.2, 3);
-    RooRealVar sigma_bkg("#sigma_{bkg}", "sigma", 0.06, 0.00001, 0.4);
+    RooRealVar sigma_bkg("#sigma_{bkg}", "sigma", 0.06, 0.01, 0.4);
     
     RooRealVar N_sig("N_{sig}", "N_sig", 10000, 0, chain->GetEntries());
     RooRealVar N_bkg("N_{bkg}", "N_bkg", 10000, 900, chain->GetEntries()); //high min bc when N_bkg=0, the fit fails
@@ -408,7 +408,7 @@ std::vector<double> PhiBinnedFitRunner::Run_mxFit(const std::vector<double>& bn_
         line->Draw();
         lines.push_back(line);
             }
-    c2D.SaveAs(Form("%s/Chi2_2D%sbinningPlot.png",outputDir.c_str(),obs_str));
+    c2D.SaveAs(Form("%s/MxChi2_2D%sbinningPlot.png",outputDir.c_str(),obs_str));
 
     //Loop over bins
     std::vector<double> results;
@@ -453,7 +453,7 @@ std::vector<double> PhiBinnedFitRunner::Run_mxFit(const std::vector<double>& bn_
             double N_sig_neg = N_sig.getVal();
             double N_sig_neg_err = N_sig.getError();
             RooPlot* frame_neg = Mx.frame(0.6, 2.3);
-            PlotSigFit(model_ext, neg_DS,frame_neg,"neg",i,j,outputDir,obs_str,obsmin,obsmax,phimin,phimax);
+            PlotSigFit(model_ext, neg_DS,frame_neg,"neg",i,j,outputDir,obs_str,obsmin,obsmax,phimin,phimax,"Mx");
             delete frame_neg;
             
             //long N_bkg_neg = N_bkg.getVal();
@@ -461,7 +461,7 @@ std::vector<double> PhiBinnedFitRunner::Run_mxFit(const std::vector<double>& bn_
             double N_sig_pos = N_sig.getVal();
             double N_sig_pos_err = N_sig.getError();
             RooPlot* frame_pos = Mx.frame(0.6, 2.3);
-            PlotSigFit(model_ext, pos_DS,frame_pos,"pos",i,j,outputDir,obs_str,obsmin,obsmax,phimin,phimax);
+            PlotSigFit(model_ext, pos_DS,frame_pos,"pos",i,j,outputDir,obs_str,obsmin,obsmax,phimin,phimax,"Mx");
             delete frame_pos;
 
             
@@ -532,8 +532,8 @@ std::vector<double> PhiBinnedFitRunner::Run_mxFit(const std::vector<double>& bn_
         
     }
     std::cout<<"\033[0;32mSuccessfully completed phiBinning\033[0m\n"<<std::endl;
-    Nasym_c->SaveAs(Form("%s/%sNasym_grid.png",outputDir.c_str(),obs_str));
-    SinCanvas->SaveAs(Form("%s/PhiBinningSinFits_%s.png",outputDir.c_str(),obs_str));
+    Nasym_c->SaveAs(Form("%s/Mx%sNasym_grid.png",outputDir.c_str(),obs_str));
+    SinCanvas->SaveAs(Form("%s/MxPhiBinningSinFits_%s.png",outputDir.c_str(),obs_str));
     delete SinCanvas;
     delete Nasym_c;
     return results;

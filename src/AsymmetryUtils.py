@@ -196,7 +196,7 @@ def PlotGraphs(results,legnames,graph_title,bin_centers,outputFile,obs):
             if "#pi^{+}#pi^{-}" in graph_title and obs == "z":
                 graphs[f"gr_{idx}"].GetYaxis().SetRangeUser(-0.35,0.45)
             if "#pi^{+}#pi^{0}" in graph_title and obs == "z":
-                graphs[f"gr_{idx}"].GetYaxis().SetRangeUser(-0.1,0.3)
+                graphs[f"gr_{idx}"].GetYaxis().SetRangeUser(-0.1,0.4)
             graphs[f"gr_{idx}"].SetTitle(graph_title)
             graphs[f"gr_{idx}"].Draw("AP")
         else:
@@ -204,8 +204,10 @@ def PlotGraphs(results,legnames,graph_title,bin_centers,outputFile,obs):
     
     leg.Draw("SAME")
     #line.Draw("SAME")
-
-    c.SaveAs(outputFile)
+    outroot = ROOT.TFile(f"{outputFile}.root")
+    c.Write()
+    outroot.Close()
+    c.SaveAs(f"{outputFile}.png")
 
 #current purityCalc Version using RooFit
 def purityCalc(inputFiles, outputDir,filename,lb,ub,obs_str,obsmin,obsmax,treeName,save_purity_plot=True):
@@ -343,10 +345,10 @@ def purityCalc_mxFit(inputFiles, outputDir,filename,lb,ub,obs_str,obsmin,obsmax,
     Mx = RooRealVar("Mx", "Mx", 0.6, 1.7)
     Mx.setRange("fullRange",0.6,1.7)
     
-    mu_sig = RooRealVar("mu_{sig}", "mu", 0.94, 0.9, 1.0)
-    sigma_sig = RooRealVar("#sigma_{sig}", "sigma", 0.06, 0.00001, 0.2)
+    mu_sig = RooRealVar("mu_{sig}", "mu", 0.94, 0.85, 1.2)
+    sigma_sig = RooRealVar("#sigma_{sig}", "sigma", 0.06, 0.01, 0.13)
     mu_bkg = RooRealVar("mu_{bkg}", "mu", 2, 1.2, 3)
-    sigma_bkg = RooRealVar("#sigma_{bkg}", "sigma", 0.06, 0.00001, 0.4)
+    sigma_bkg = RooRealVar("#sigma_{bkg}", "sigma", 0.06, 0.01, 0.4)
 
     #create dataset and extended PDF --------------------------------------------------------------------
     print(f"chain Entries = {chain.GetEntries()}")
