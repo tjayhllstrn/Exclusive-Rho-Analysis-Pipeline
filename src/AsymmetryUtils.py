@@ -13,7 +13,7 @@ import array
 
 
 #returns a list of tuples that are (param, param_err) for the asymmetry fitting
-def RunFittingMLM(obs,bin_edges,inputFiles,treeName,lower_bound,upper_bound,exclusiveFit,fit_type="sim"):
+def RunFittingMLM(obs,bin_edges,inputFiles,treeName,lower_bound,upper_bound,obs2,obs2min,obs2max,exclusiveFit,fit_type="sim"):
     #make sure parameters are inputted correctly:
     for f in inputFiles:
         if not os.path.isfile(f):
@@ -34,14 +34,14 @@ def RunFittingMLM(obs,bin_edges,inputFiles,treeName,lower_bound,upper_bound,excl
     ROOT.gROOT.cd()
     if exclusiveFit == "Mh":
         if treeName == "pippi0":
-            cut_str = f"Mdiphoton<0.16 && 0.115<Mdiphoton && 0.85<Mx && Mx < 1.05 && {lower_bound}<Mh && Mh<{upper_bound}"
+            cut_str = f"Mdiphoton<0.16 && 0.115<Mdiphoton && 0.85<Mx && Mx < 1.05 && {lower_bound}<Mh && Mh<{upper_bound} && {obs2min}<{obs2}&&{obs2}<{obs2max}"
         elif treeName == "pippim":
-            cut_str = f"0.85<Mx && Mx < 1.05 && {lower_bound}<Mh && Mh<{upper_bound}"
+            cut_str = f"0.85<Mx && Mx < 1.05 && {lower_bound}<Mh && Mh<{upper_bound}&& {obs2min}<{obs2}&&{obs2}<{obs2max}"
     elif exclusiveFit == "Mx":
         if treeName == "pippi0":
-            cut_str = f"Mdiphoton<0.16 && 0.115<Mdiphoton && 0.65<Mh&&Mh<0.9 && {lower_bound}<Mx && Mx<{upper_bound}"
+            cut_str = f"Mdiphoton<0.16 && 0.115<Mdiphoton && 0.65<Mh&&Mh<0.9 && {lower_bound}<Mx && Mx<{upper_bound}&& {obs2min}<{obs2}&&{obs2}<{obs2max}"
         elif treeName == "pippim":
-            cut_str = f"0.65<Mh&&Mh<0.9 && {lower_bound}<Mx && Mx<{upper_bound}"
+            cut_str = f"0.65<Mh&&Mh<0.9 && {lower_bound}<Mx && Mx<{upper_bound}&& {obs2min}<{obs2}&&{obs2}<{obs2max}"
 
     
     t = chain.CopyTree(cut_str) #Applies diphoton (pion) and missing mass (neutron) cuts, as well as specifies the region of calculating A
@@ -164,16 +164,21 @@ def PlotGraphs(results,legnames,graph_title,bin_centers,outputFile,obs):
     c.SetGridy()
 
     
-    leg = ROOT.TLegend(0.15,0.15,0.45,0.25) #xmin,ymin,xmax.ymax
+    leg = ROOT.TLegend(0.15,0.15,0.50,0.25) #xmin,ymin,xmax.ymax
     leg.SetBorderSize(0)
 
     #generate graphs
-    colors = [ROOT.kRed-6,ROOT.kCyan-6,ROOT.kGray,ROOT.kViolet,ROOT.kBlack,ROOT.kPink]
+    ROOT.gStyle.SetPalette(ROOT.kBird)
+    ncolors = ROOT.TColor.GetNumberOfColors()
+    color_sep = int(ncolors/len(results))
+    palette = ROOT.TColor.GetPalette()
+    colors = [int(palette.At(i)) for i in range(ncolors)]
     graphs = {}
+    #colors = [ROOT.kRed-6,ROOT.kCyan-6,ROOT.kGray,ROOT.kViolet,ROOT.kBlack,ROOT.kPink]
     for idx in range(len(results)):
         gr = PlotSingleGraph(results[idx],bin_centers,idx)
-        gr.SetMarkerColor(colors[idx])
-        gr.SetLineColor(colors[idx])
+        gr.SetMarkerColor(colors[color_sep*idx])
+        gr.SetLineColor(colors[color_sep*idx])
         gr.SetLineWidth(2)
         leg.AddEntry(gr,legnames[idx],"p")
         if obs =="cth":
@@ -181,6 +186,7 @@ def PlotGraphs(results,legnames,graph_title,bin_centers,outputFile,obs):
         else:
             gr.GetXaxis().SetTitle(f"{obs}")
         gr.GetYaxis().SetTitle("F_{LU}^{sin#phi}/F_{UU}")
+        gr.SetName(f"gr_{idx}")
         graphs[f"gr_{idx}"] = gr
 
 
@@ -189,7 +195,7 @@ def PlotGraphs(results,legnames,graph_title,bin_centers,outputFile,obs):
     #line.SetLineWidth(2)
     #line.SetLineStyle(2)
     #line.SetLineColor(ROOT.kBlack-2)
-
+    outroot = ROOT.TFile(f"{outputFile}.root","RECREATE")
     #Draw graphs
     for idx in range(len(results)):
         if idx ==0:
@@ -199,18 +205,20 @@ def PlotGraphs(results,legnames,graph_title,bin_centers,outputFile,obs):
                 graphs[f"gr_{idx}"].GetYaxis().SetRangeUser(-0.1,0.4)
             graphs[f"gr_{idx}"].SetTitle(graph_title)
             graphs[f"gr_{idx}"].Draw("AP")
+            graphs[f"gr_{idx}"].Write()
         else:
             graphs[f"gr_{idx}"].Draw("P SAME")
+            graphs[f"gr_{idx}"].Write()
     
     leg.Draw("SAME")
+    leg.Write()
     #line.Draw("SAME")
-    outroot = ROOT.TFile(f"{outputFile}.root")
     c.Write()
     outroot.Close()
     c.SaveAs(f"{outputFile}.png")
 
 #current purityCalc Version using RooFit
-def purityCalc(inputFiles, outputDir,filename,lb,ub,obs_str,obsmin,obsmax,treeName,save_purity_plot=True):
+def purityCalc(inputFiles, outputDir,filename,lb,ub,obs_str,obsmin,obsmax,obs2_str,obs2min,obs2max,treeName,save_purity_plot=True):
     #chain data:
     chain = ROOT.TChain(treeName)
     for f in inputFiles:
@@ -249,14 +257,15 @@ def purityCalc(inputFiles, outputDir,filename,lb,ub,obs_str,obsmin,obsmax,treeNa
     
     #create data set with missing mass, pion and bin cuts
     Mx = RooRealVar("Mx","Mx",0.85,1.05)
+    obs2 = RooRealVar(f"{obs2_str}",f"{obs2_str}",obs2min,obs2max)
     obs = RooRealVar(f"{obs_str}",f"{obs_str}",obsmin,obsmax)
     if treeName == "pippi0":
         Mdiphoton = RooRealVar("Mdiphoton","Mdiphoton",0.115,0.16)
-        cut_str = f"Mdiphoton<0.16 && 0.115<Mdiphoton && 0.85<Mx && Mx < 1.05 && {obs_str}>{obsmin} && {obs_str}<{obsmax}"
-        roo_DS = RooDataSet("roo_DS","roo_DS",chain,ROOT.RooArgSet(Mh,Mdiphoton,Mx,obs),cut_str)
+        cut_str = f"Mdiphoton<0.16 && 0.115<Mdiphoton && 0.85<Mx && Mx < 1.05 && {obs_str}>{obsmin} && {obs_str}<{obsmax}&& {obs2min}<{obs2_str}&&{obs2_str}<{obs2max}"
+        roo_DS = RooDataSet("roo_DS","roo_DS",chain,ROOT.RooArgSet(Mh,Mdiphoton,Mx,obs,obs2),cut_str)
     else:
-        cut_str = f"0.85<Mx && Mx < 1.05 && {obs_str}>{obsmin} && {obs_str}<{obsmax}"
-        roo_DS = RooDataSet("roo_DS","roo_DS",chain,ROOT.RooArgSet(Mh,Mx,obs),cut_str)
+        cut_str = f"0.85<Mx && Mx < 1.05 && {obs_str}>{obsmin} && {obs_str}<{obsmax}&& {obs2min}<{obs2_str}&&{obs2_str}<{obs2max}"
+        roo_DS = RooDataSet("roo_DS","roo_DS",chain,ROOT.RooArgSet(Mh,Mx,obs,obs2),cut_str)
     
     
     
@@ -271,6 +280,10 @@ def purityCalc(inputFiles, outputDir,filename,lb,ub,obs_str,obsmin,obsmax,treeNa
     print(f"\033[92mu = {u}+/-{u_err}\033[0m")
     
     if save_purity_plot:
+        plotname = f"{filename}_PurityFit_{obs_str}{round(obsmin,2)}-{round(obsmax,2)}_{obs2_str}{round(obs2min,2)}-{round(obs2max,2)}"
+        outputFile = os.path.join(outputDir,f"PurityFits/{plotname}")
+        outroot = ROOT.TFile(f"{outputFile}.root","RECREATE")
+        
         #create frame and plot data and fits
         frame = Mh.frame(0.4,1.7)
         frame.SetYTitle("Events")
@@ -293,6 +306,7 @@ def purityCalc(inputFiles, outputDir,filename,lb,ub,obs_str,obsmin,obsmax,treeNa
         leg.AddEntry(frame.findObject("sigFit"),"Gauss Function","l")
         leg.AddEntry(frame.findObject("bkgFit"),"Chebychev Function","l")
         leg.SetBorderSize(0)
+        leg.SetName("leg")
         
         pad1 = canvas.cd(1)
         pad1.SetPad(0.0,0.1,0.9,1.0)
@@ -304,17 +318,24 @@ def purityCalc(inputFiles, outputDir,filename,lb,ub,obs_str,obsmin,obsmax,treeNa
         text.SetTextSize(0.06)
         text.SetTextColor(ROOT.kBlack)
 
+        nll_min = fit_results.minNll()
+        nll=ROOT.TLatex(0.515,0.25,f"Negative Log Likelihood Minimum= {round(nll_min,4)}")
+        nll.SetNDC(True)
+        nll.SetTextSize(0.06)
+        nll.SetTextColor(ROOT.kBlack)
+
         canvas.cd(1)
         frame.Draw()
         leg.Draw()
         text.Draw()
-        
+        canvas.Update()
         canvas.cd(2)
 
         param_box = ROOT.TPaveText(0.05, 0.2, 0.95, 0.8, "NDC")
         param_box.SetFillColor(0)
         param_box.SetTextAlign(22)
         param_box.SetTextSize(0.1)
+        param_box.SetName("param_box")
         for p in model_ext.getParameters(roo_DS):
             name = p.GetName()
             val = p.getVal()
@@ -325,17 +346,40 @@ def purityCalc(inputFiles, outputDir,filename,lb,ub,obs_str,obsmin,obsmax,treeNa
                 param_box.AddText(f"{name}: {val:.2f}#pm{val_err:.2f}")
         
         param_box.Draw()
-
-        plotname = f"{filename}_PurityFit_{round(obsmin,2)}-{round(obsmax,2)}"
-        outputFile = os.path.join(outputDir,f"PurityFits/{plotname}.png")
-        canvas.SaveAs(outputFile)
+        
+        Mh_clone = Mh.clone("Mh_clone")
+        model_clone = model_ext.clone("model_clone")
+        chi2ndf_val = calc_chi2ndf(roo_DS,Mh_clone,model_clone)
+        chi2 = ROOT.TLatex(0.525,0.35,f"#chi^{{2}}/ndf = {round(chi2ndf_val,3)}")
+        chi2.SetNDC(True)
+        chi2.SetTextSize(0.06)
+        chi2.SetTextColor(ROOT.kBlack)
+        canvas.cd(1)
+        chi2.Draw()
+        
+        canvas.Update()
+        canvas.Write()
+        canvas.SaveAs(f"{outputFile}.png")
+        frame.SetName("frameMh")
+        frame.Write()
+        leg.SetName("leg")
+        leg.Write()
+        text.SetName("u_val")
+        text.Write()
+        chi2.SetName("chi2ndf")
+        chi2.Write()
+        nll.SetName("nll_min_val")
+        nll.Write()
+        param_box.SetName("param_box")
+        param_box.Write()
+        outroot.Close()
 
         
         return u, u_err
     else:
         return u, u_err
 
-def purityCalc_mxFit(inputFiles, outputDir,filename,lb,ub,obs_str,obsmin,obsmax,treeName,save_purity_plot=True):
+def purityCalc_mxFit(inputFiles, outputDir,filename,lb,ub,obs_str,obsmin,obsmax,obs2_str,obs2min,obs2max,treeName,save_purity_plot=True):
     #chain data:
     chain = ROOT.TChain(treeName)
     for f in inputFiles:
@@ -364,13 +408,14 @@ def purityCalc_mxFit(inputFiles, outputDir,filename,lb,ub,obs_str,obsmin,obsmax,
     #create data set with missing mass, pion and bin cuts
     Mh = RooRealVar("Mh","Mh",0.65,0.9)
     obs = RooRealVar(f"{obs_str}",f"{obs_str}",obsmin,obsmax)
+    obs2 = RooRealVar(f"{obs2_str}",f"{obs2_str}",obs2min,obs2max)
     if treeName == "pippi0":
         Mdiphoton = RooRealVar("Mdiphoton","Mdiphoton",0.115,0.16)
-        cut_str = f"Mdiphoton<0.16 && 0.115<Mdiphoton && 0.65<Mh&&Mh<0.9 && {obs_str}>{obsmin} && {obs_str}<{obsmax}"
-        roo_DS = RooDataSet("roo_DS","roo_DS",chain,ROOT.RooArgSet(Mx,Mdiphoton,Mh,obs),cut_str)
+        cut_str = f"Mdiphoton<0.16 && 0.115<Mdiphoton && 0.65<Mh&&Mh<0.9 && {obs_str}>{obsmin} && {obs_str}<{obsmax}&& {obs2min}<{obs2_str}&&{obs2_str}<{obs2max}"
+        roo_DS = RooDataSet("roo_DS","roo_DS",chain,ROOT.RooArgSet(Mx,Mdiphoton,Mh,obs,obs2),cut_str)
     else:
-        cut_str = f"0.65<Mh&&Mh<0.9 && {obs_str}>{obsmin} && {obs_str}<{obsmax}"
-        roo_DS = RooDataSet("roo_DS","roo_DS",chain,ROOT.RooArgSet(Mx,Mh,obs),cut_str)
+        cut_str = f"0.65<Mh&&Mh<0.9 && {obs_str}>{obsmin} && {obs_str}<{obsmax}&& {obs2min}<{obs2_str}&&{obs2_str}<{obs2max}"
+        roo_DS = RooDataSet("roo_DS","roo_DS",chain,ROOT.RooArgSet(Mx,Mh,obs,obs2),cut_str)
     
     
     #perform fit --------------------------------------------------------------------
@@ -383,6 +428,10 @@ def purityCalc_mxFit(inputFiles, outputDir,filename,lb,ub,obs_str,obsmin,obsmax,
     print(f"\033[92mu = {u}+/-{u_err}\033[0m")
     
     if save_purity_plot:
+        plotname = f"{filename}_PurityFit_z{round(obsmin,2)}-{round(obsmax,2)}_{obs2_str}{round(obs2min,2)}-{round(obs2max,2)}"
+        outputFile = os.path.join(outputDir,f"PurityFits/{plotname}")
+        outroot = ROOT.TFile(f"{outputFile}.root","RECREATE")
+        
         #create frame and plot data and fits
         frame = Mx.frame(0.6,2.3)
         frame.SetYTitle("Events")
@@ -395,6 +444,8 @@ def purityCalc_mxFit(inputFiles, outputDir,filename,lb,ub,obs_str,obsmin,obsmax,
         model_ext.plotOn(frame, RooFit.Components("sig"), RooFit.LineColor(ROOT.kBlue),
                     RooFit.Name("sigFit"))
         frame.SetTitle(f"Purity Calculation Fit {round(obsmin,2)}<{obs_str}<{round(obsmax,2)}")
+
+        
 
         canvas = ROOT.TCanvas()
         canvas.Divide(2,1)
@@ -415,6 +466,14 @@ def purityCalc_mxFit(inputFiles, outputDir,filename,lb,ub,obs_str,obsmin,obsmax,
         text.SetNDC(True)
         text.SetTextSize(0.06)
         text.SetTextColor(ROOT.kBlack)
+
+        
+
+        nll_min = fit_results.minNll()
+        nll=ROOT.TLatex(0.515,0.25,f"Negative Log Likelihood Minimum= {round(nll_min,4)}")
+        nll.SetNDC(True)
+        nll.SetTextSize(0.06)
+        nll.SetTextColor(ROOT.kBlack)
 
         canvas.cd(1)
         frame.Draw()
@@ -438,10 +497,28 @@ def purityCalc_mxFit(inputFiles, outputDir,filename,lb,ub,obs_str,obsmin,obsmax,
         
         param_box.Draw()
 
-        plotname = f"{filename}_PurityFit_{round(obsmin,2)}-{round(obsmax,2)}"
-        outputFile = os.path.join(outputDir,f"PurityFits/{plotname}.png")
-        canvas.SaveAs(outputFile)
 
+        
+        canvas.Update()
+        canvas.Write()
+        canvas.SaveAs(f"{outputFile}.png")
+        frame.SetName("frameMx")
+        frame.Write()
+        leg.SetName("leg")
+        leg.Write()
+        text.SetName("u_val")
+        text.Write()
+        nll.SetName("nll_min_val")
+        nll.Write()
+        param_box.SetName("param_box")
+        param_box.Write()
+        
+        
+
+        #Bin the data to find Chi2 fit:
+        #chi2pndf_val = calc_chi2ndf(roo_DS,Mx,model_ext)
+
+        outroot.Close()
         
         return u, u_err
     else:
@@ -476,4 +553,19 @@ def integrate_u(x_var,background,sig,N_sig,N_bkg,fit_results,lb,ub):
     denom_err = num_err + (bkg_perc_err/bkg_perc + N_bkg.getError()/N_bkg.getVal())*bkg_N_local
     u_err = u*ROOT.TMath.Sqrt(ROOT.TMath.Power(num_err/num,2)+ROOT.TMath.Power(denom_err/denom,2))
     return u,u_err
+
+def calc_chi2ndf(roo_DS,RooVar,model):
+    nbins = 100
+    RooVar.setBinning(ROOT.RooBinning(nbins),"chi2Binning")
+    roo_dh = RooDataHist("roo_dh","roo_dh",RooVar,roo_DS)
+    chi2_var = model.createChi2(roo_dh,RooFit.Range("fullRange"),RooFit.Extended(True),RooFit.DataError(ROOT.RooAbsData.Poisson))
+    nparams = 6
+    ndf = nbins - nparams
+    chi2pNDF = chi2_var.getVal()/ndf
+
+    del roo_dh
+    del chi2_var
+
+    return chi2pNDF
+
 

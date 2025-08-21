@@ -15,7 +15,8 @@ import ROOT
 def main(inputFiles,outputDir,
          fit_type,obs,bin_edges,
         graph_title,
-        treeName):
+        treeName,
+        obs2,obs2bin):
     
     ROOT.gROOT.SetBatch(True)
     ROOT.gSystem.Load("libRooFit")
@@ -33,18 +34,19 @@ def main(inputFiles,outputDir,
     
     results = []
     legend_names = []
-    if fit_type[0]=="1":
-        results.append(RunMhFitMLM(obs,bin_edges,inputFiles,outputDir,treeName))
-        legend_names.append("A_{sig} MLM Fit to M_{h}")
-    if fit_type[1]=="1":
-        results.append(RunMhFitChi2(bin_edges,phibn_edges,inputFiles,outputDir,obs,treeName))
-        legend_names.append("A_{sig} Chi2 Fit to M_{h}")
-    if fit_type[2]=="1":
-        results.append(RunMxFitMLM(obs,bin_edges,inputFiles,outputDir,treeName))
-        legend_names.append("A_{sig} MLM Fit to M_{x}")
-    if fit_type[3]=="1":
-        results.append(RunMxFitChi2(bin_edges,phibn_edges,inputFiles,outputDir,obs,treeName))
-        legend_names.append("A_{sig} Chi2 Fit to M_{x}")
+    for bn_idx in range(len(obs2bin)-1): 
+        if fit_type[0]=="1":
+            results.append(RunMhFitMLM(obs,bin_edges,inputFiles,outputDir,treeName,obs2,obs2bin[bn_idx],obs2bin[bn_idx+1]))
+            legend_names.append(f"A_{{sig}} MLM Fit to M_{{h}} {obs2} ({obs2bin[bn_idx]},{obs2bin[bn_idx+1]})")
+        if fit_type[1]=="1":
+            results.append(RunMhFitChi2(bin_edges,phibn_edges,inputFiles,outputDir,obs,treeName,obs2,obs2bin[bn_idx],obs2bin[bn_idx+1]))
+            legend_names.append(f"A_{{sig}} Chi2 Fit to M_{{h}} {obs2} ({obs2bin[bn_idx]},{obs2bin[bn_idx+1]})")
+        if fit_type[2]=="1":
+            results.append(RunMxFitMLM(obs,bin_edges,inputFiles,outputDir,treeName,obs2,obs2bin[bn_idx],obs2bin[bn_idx+1]))
+            legend_names.append(f"A_{{sig}} MLM Fit to M_{{x}} {obs2} ({obs2bin[bn_idx]},{obs2bin[bn_idx+1]})")
+        if fit_type[3]=="1":
+            results.append(RunMxFitChi2(bin_edges,phibn_edges,inputFiles,outputDir,obs,treeName,obs2,obs2bin[bn_idx],obs2bin[bn_idx+1]))
+            legend_names.append(f"A_{{sig}} Chi2 Fit to M_{{x}} {obs2} ({obs2bin[bn_idx]},{obs2bin[bn_idx+1]})")
 
         
     #--------------------------------------------------------------------
@@ -59,7 +61,7 @@ def main(inputFiles,outputDir,
                 bin_centers,outputFile,obs)
     return 0
 
-def RunMxFitMLM(obs,bin_edges,inputFiles,outputDir,treeName):
+def RunMxFitMLM(obs,bin_edges,inputFiles,outputDir,treeName,obs2,obs2min,obs2max):
     sigbkg_ub = 1.15
     sigbkg_lb = 0.85
     bkg_ub = 2.75
@@ -69,11 +71,13 @@ def RunMxFitMLM(obs,bin_edges,inputFiles,outputDir,treeName):
     A_sigbkg_results,bin_centers = RunFittingMLM(obs,bin_edges,
                                                  inputFiles,treeName,
                                                  sigbkg_lb,sigbkg_ub,
+                                                 obs2,obs2min,obs2max,
                                                  "Mx","sim") #runs "sim" or "single"
     print("\033[92mfitting bkg region\033[0m")
     A_bkg_results,bin_centers = RunFittingMLM(obs,bin_edges,
                                              inputFiles,treeName,
                                              bkg_lb,bkg_ub,
+                                             obs2,obs2min,obs2max,
                                              "Mx","sim") #runs "sim" or "single"
     
     #--------------------------------------------------------------------
@@ -83,7 +87,7 @@ def RunMxFitMLM(obs,bin_edges,inputFiles,outputDir,treeName):
     for idx in range(len(bin_edges)-1):
         obsmin = bin_edges[idx]
         obsmax = bin_edges[idx+1]
-        u_results.append(purityCalc_mxFit(inputFiles,outputDir,"MxMLM",sigbkg_lb,sigbkg_ub,obs,obsmin,obsmax,treeName,True))
+        u_results.append(purityCalc_mxFit(inputFiles,outputDir,"MxMLM",sigbkg_lb,sigbkg_ub,obs,obsmin,obsmax,obs2,obs2min,obs2max,treeName,True))
     
     #plot purity by bin:
     u_vals = [entry[0] for entry in u_results]
@@ -108,12 +112,16 @@ def RunMxFitMLM(obs,bin_edges,inputFiles,outputDir,treeName):
     #leg.SetBorderSize(1)
     leg.AddText("Exclusive Signal Purity")#leg.AddEntry(gr,"Exclusive Signal Purity","p")
     leg.SetTextSize(0.04)
-        
-    PurityOutputFile = os.path.join(outputDir,"PurityFits/Mx_purityPerBin.png")
+
+    PurityOutputFile = os.path.join(outputDir,f"PurityFits/Mx_purityPerBin_{obs2}{obs2min}-{obs2max}")
+    outroot = ROOT.TFile(f"{PurityOutputFile}.root","RECREATE")
     c = ROOT.TCanvas()
     gr.Draw("AP")
     leg.Draw("SAME")
-    c.SaveAs(PurityOutputFile)
+    gr.Write()
+    leg.Write()
+    outroot.Close()
+    c.SaveAs(f"{PurityOutputFile}.png")
 
     #--------------------------------------------------------------------
     #find the signal Assymetry based on A_sigbkg = u*A_sig + (1-u)*A_bkg
@@ -137,11 +145,11 @@ def RunMxFitMLM(obs,bin_edges,inputFiles,outputDir,treeName):
 
     return A_sig_results
 
-def RunMxFitChi2(bin_edges,phibn_edges,inputFiles,outputDir,obs,treeName):
+def RunMxFitChi2(bin_edges,phibn_edges,inputFiles,outputDir,obs,treeName,obs2,obs2min,obs2max):
     ROOT.gSystem.Load("/w/hallb-scshelf2102/clas12/users/tjhellst/clas-ana-scaffold-tyler/macros/libPhiBinnedFitRunner.so")
     runner = ROOT.PhiBinnedFitRunner()
 
-    alpha = runner.Run_mxFit(bin_edges,phibn_edges,inputFiles,outputDir,obs,treeName)
+    alpha = runner.Run_mxFit(bin_edges,phibn_edges,inputFiles,outputDir,obs,treeName,obs2,obs2min,obs2max)
             
     results = list(alpha)
     A_sig_results = []
@@ -152,7 +160,7 @@ def RunMxFitChi2(bin_edges,phibn_edges,inputFiles,outputDir,obs,treeName):
         
 
 
-def RunMhFitMLM(obs,bin_edges,inputFiles,outputDir,treeName):
+def RunMhFitMLM(obs,bin_edges,inputFiles,outputDir,treeName,obs2,obs2min,obs2max):
     sigbkg_ub = 0.9
     sigbkg_lb = 0.65
     bkg_ub = 1.7
@@ -162,11 +170,13 @@ def RunMhFitMLM(obs,bin_edges,inputFiles,outputDir,treeName):
     A_sigbkg_results,bin_centers = RunFittingMLM(obs,bin_edges,
                                                  inputFiles,treeName,
                                                  sigbkg_lb,sigbkg_ub,
+                                                 obs2,obs2min,obs2max,
                                                  "Mh","sim") #runs "sim" or "single"
     print("\033[92mfitting bkg region\033[0m")
     A_bkg_results,bin_centers = RunFittingMLM(obs,bin_edges,
                                              inputFiles,treeName,
                                              bkg_lb,bkg_ub,
+                                              obs2,obs2min,obs2max,
                                              "Mh","sim") #runs "sim" or "single"
 
     #--------------------------------------------------------------------
@@ -176,7 +186,7 @@ def RunMhFitMLM(obs,bin_edges,inputFiles,outputDir,treeName):
     for idx in range(len(bin_edges)-1):
         obsmin = bin_edges[idx]
         obsmax = bin_edges[idx+1]
-        u_results.append(purityCalc(inputFiles,outputDir,"MhMLM",sigbkg_lb,sigbkg_ub,obs,obsmin,obsmax,treeName,True))
+        u_results.append(purityCalc(inputFiles,outputDir,"MhMLM",sigbkg_lb,sigbkg_ub,obs,obsmin,obsmax,obs2,obs2min,obs2max,treeName,True))
     
     #plot purity by bin:
     u_vals = [entry[0] for entry in u_results]
@@ -201,12 +211,17 @@ def RunMhFitMLM(obs,bin_edges,inputFiles,outputDir,treeName):
     #leg.SetBorderSize(1)
     leg.AddText("Exclusive Signal Purity")#leg.AddEntry(gr,"Exclusive Signal Purity","p")
     leg.SetTextSize(0.04)
-        
-    PurityOutputFile = os.path.join(outputDir,"PurityFits/Mh_purityPerBin.png")
+    
+    
+    PurityOutputFile = os.path.join(outputDir,f"PurityFits/Mh_purityPerBin_{obs2}{obs2min}-{obs2max}")
+    outroot = ROOT.TFile(f"{PurityOutputFile}.root","RECREATE")
     c = ROOT.TCanvas()
     gr.Draw("AP")
     leg.Draw("SAME")
-    c.SaveAs(PurityOutputFile)
+    gr.Write()
+    leg.Write()
+    outroot.Close()
+    c.SaveAs(f"{PurityOutputFile}.png")
 
     #--------------------------------------------------------------------
     #find the signal Assymetry based on A_sigbkg = u*A_sig + (1-u)*A_bkg
@@ -231,10 +246,10 @@ def RunMhFitMLM(obs,bin_edges,inputFiles,outputDir,treeName):
     return A_sig_results
 
 
-def RunMhFitChi2(bin_edges,phibn_edges,inputFiles,outputDir,obs,treeName):
+def RunMhFitChi2(bin_edges,phibn_edges,inputFiles,outputDir,obs,treeName,obs2,obs2min,obs2max):
     ROOT.gSystem.Load("/w/hallb-scshelf2102/clas12/users/tjhellst/clas-ana-scaffold-tyler/macros/libPhiBinnedFitRunner.so")
     runner = ROOT.PhiBinnedFitRunner()
-    alpha = runner.Run(bin_edges,phibn_edges,inputFiles,outputDir,obs,treeName)            
+    alpha = runner.Run(bin_edges,phibn_edges,inputFiles,outputDir,obs,treeName,obs2,obs2min,obs2max)            
     results = list(alpha) 
     A_sig_results = []
     for i in range(0,len(results),2):

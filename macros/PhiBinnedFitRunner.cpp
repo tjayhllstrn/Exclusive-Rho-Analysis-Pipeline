@@ -60,7 +60,7 @@ std::pair<double,double> FitToSin(std::vector<double> x_vals,std::vector<double>
     return std::make_pair(amplitude,amplitude_err);
     
 }
-void PlotSigFit(RooAddPdf model_ext, RooDataSet DS,RooPlot* frame,std::string hel,int i, int j,std::string outputDir,const char* obs_str,double obsmin,double obsmax,double phimin,double phimax,const char* flag){
+void PlotSigFit(RooAddPdf model_ext, RooDataSet DS,RooPlot* frame,std::string hel,int i, int j,std::string outputDir,const char* obs_str,double obsmin,double obsmax,double phimin,double phimax,const char* flag,const char* obs2_str,double obs2min,double obs2max){
     using namespace RooFit;
     DS.plotOn(frame, MarkerSize(0.5), Name("data"));
     model_ext.plotOn(frame, LineStyle(kDashed), LineColor(kBlack), Name("totalFit"));
@@ -121,11 +121,11 @@ void PlotSigFit(RooAddPdf model_ext, RooDataSet DS,RooPlot* frame,std::string he
     }
     
     param_box->Draw();
-    c->SaveAs(Form("%s/phiBinningFits_%s/%s_fit_%s%d_phi%d.png", outputDir.c_str(),flag,hel.c_str(),obs_str,(int)i, (int)j));
+    c->SaveAs(Form("%s/phiBinningFits_%s/%s_fit_%s%d_phi%d_%s%.2f-%.2f.png", outputDir.c_str(),flag,hel.c_str(),obs_str,(int)i, (int)j,obs2_str,obs2min,obs2max));
 }
 
 
-std::vector<double> PhiBinnedFitRunner::Run(const std::vector<double>& bn_edges,const std::vector<double>& phibn_edges, const std::vector<std::string>& inputFiles, const std::string& outputDir,const char* obs_str,const char* treeName) {
+std::vector<double> PhiBinnedFitRunner::Run(const std::vector<double>& bn_edges,const std::vector<double>& phibn_edges, const std::vector<std::string>& inputFiles, const std::string& outputDir,const char* obs_str,const char* treeName, const char* obs2_str, double obs2min, double obs2max) {
     using namespace RooFit;
     std::cout<<"\033[0;32mRunning chi2 phibinning Fit\033[0m\n"<<std::endl;
     // Load TChain
@@ -136,11 +136,11 @@ std::vector<double> PhiBinnedFitRunner::Run(const std::vector<double>& bn_edges,
     
     const char* cut_str;
     if (strcmp(treeName,"pippi0")==0){
-        cut_str = "Mdiphoton<0.16 && 0.115<Mdiphoton && 0.85<Mx && Mx<1.05";
+        cut_str = Form("Mdiphoton<0.16 && 0.115<Mdiphoton && 0.85<Mx && Mx<1.05 && %f<%s&&%s<%f",obs2min,obs2_str,obs2_str,obs2max);
     }
 
     else{
-        cut_str = "0.85<Mx && Mx<1.05";
+        cut_str = Form("0.85<Mx && Mx<1.05&& %f<%s&&%s<%f",obs2min,obs2_str,obs2_str,obs2max);
     }
     TTree* chain = uncut.CopyTree(cut_str);
     //NOTE: this is technically only the polarization for RGA Inbending fall 2018. The other polarization info is found in Constants.h file in src
@@ -197,7 +197,7 @@ std::vector<double> PhiBinnedFitRunner::Run(const std::vector<double>& bn_edges,
         line->Draw();
         lines.push_back(line);
             }
-    c2D.SaveAs(Form("%s/MhChi2_2D%sbinningPlot.png",outputDir.c_str(),obs_str));
+    c2D.SaveAs(Form("%s/MhChi2_2D%sbinningPlot_%s%.2f-%.2f.png",outputDir.c_str(),obs_str,obs2_str,obs2min,obs2max));
 
     //Loop over bins
     std::vector<double> results;
@@ -242,7 +242,7 @@ std::vector<double> PhiBinnedFitRunner::Run(const std::vector<double>& bn_edges,
             double N_sig_neg = N_sig.getVal();
             double N_sig_neg_err = N_sig.getError();
             RooPlot* frame_neg = Mh.frame(0.4, 1.7);
-            PlotSigFit(model_ext, neg_DS,frame_neg,"neg",i,j,outputDir,obs_str,obsmin,obsmax,phimin,phimax,"Mh");
+            PlotSigFit(model_ext, neg_DS,frame_neg,"neg",i,j,outputDir,obs_str,obsmin,obsmax,phimin,phimax,"Mh",obs2_str,obs2min,obs2max);
             delete frame_neg;
             
             //long N_bkg_neg = N_bkg.getVal();
@@ -250,7 +250,7 @@ std::vector<double> PhiBinnedFitRunner::Run(const std::vector<double>& bn_edges,
             double N_sig_pos = N_sig.getVal();
             double N_sig_pos_err = N_sig.getError();
             RooPlot* frame_pos = Mh.frame(0.4, 1.7);
-            PlotSigFit(model_ext, pos_DS,frame_pos,"pos",i,j,outputDir,obs_str,obsmin,obsmax,phimin,phimax,"Mh");
+            PlotSigFit(model_ext, pos_DS,frame_pos,"pos",i,j,outputDir,obs_str,obsmin,obsmax,phimin,phimax,"Mh",obs2_str,obs2min,obs2max);
             delete frame_pos;
 
             
@@ -329,8 +329,8 @@ std::vector<double> PhiBinnedFitRunner::Run(const std::vector<double>& bn_edges,
         
         
     }
-    Nasym_c->SaveAs(Form("%s/Mh%sNasym_grid.png",outputDir.c_str(),obs_str));
-    SinCanvas->SaveAs(Form("%s/MhPhiBinningSinFits_%s.png",outputDir.c_str(),obs_str));
+    Nasym_c->SaveAs(Form("%s/Mh%sNasym_grid_%s%.2f-%.2f.png",outputDir.c_str(),obs_str,obs2_str,obs2min,obs2max));
+    SinCanvas->SaveAs(Form("%s/MhPhiBinningSinFits_%s_%s%.2f-%.2f.png",outputDir.c_str(),obs_str,obs2_str,obs2min,obs2max));
     delete SinCanvas;
     delete Nasym_c;
     return results;
@@ -339,56 +339,33 @@ std::vector<double> PhiBinnedFitRunner::Run(const std::vector<double>& bn_edges,
 //------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
-std::vector<double> PhiBinnedFitRunner::Run_mxFit(const std::vector<double>& bn_edges,const std::vector<double>& phibn_edges, const std::vector<std::string>& inputFiles, const std::string& outputDir,const char* obs_str,const char* treeName) {
+std::vector<double> PhiBinnedFitRunner::Run_mxFit(const std::vector<double>& bn_edges,const std::vector<double>& phibn_edges, const std::vector<std::string>& inputFiles, const std::string& outputDir,const char* obs_str,const char* treeName, const char* obs2_str, double obs2min, double obs2max) {
     using namespace RooFit;
     std::cout<<"\033[0;32mRunning chi2 phibinning Fit\033[0m\n"<<std::endl;
     // Load TChain
-    TChain uncut(treeName);
+    TChain* uncut = new TChain(treeName);
     for (const auto& str : inputFiles) {
-        uncut.Add(str.c_str());
+        uncut->Add(str.c_str());
     }
     
-    const char* cut_str;
-    if (strcmp(treeName,"pippi0")==0){
-        cut_str = "Mdiphoton<0.16 && 0.115<Mdiphoton && 0.65<Mh&&Mh<0.9";
-    }
-
-    else{
-        cut_str = "0.65<Mh&&Mh<0.9";
-    }
-    TTree* chain = uncut.CopyTree(cut_str);
-    //NOTE: this is technically only the polarization for RGA Inbending fall 2018. The other polarization info is found in Constants.h file in src
-    double beam_pol = 0.8592;
-    
-    RooRealVar Mx("Mx", "Mx", 0.6, 1.7); 
-    Mx.setRange("fullRange", 0.6, 1.7); 
-    
-    RooRealVar mu_sig("mu_{sig}", "mu", 0.94, 0.85, 1.2);
-    RooRealVar sigma_sig("#sigma_{sig}", "sigma", 0.06, 0.01, 0.13);
-    RooRealVar mu_bkg("mu_{bkg}", "mu", 2, 1.2, 3);
-    RooRealVar sigma_bkg("#sigma_{bkg}", "sigma", 0.06, 0.01, 0.4);
-    
-    RooRealVar N_sig("N_{sig}", "N_sig", 10000, 0, chain->GetEntries());
-    RooRealVar N_bkg("N_{bkg}", "N_bkg", 10000, 900, chain->GetEntries()); //high min bc when N_bkg=0, the fit fails
-    
-    RooRealVar obs(obs_str, obs_str,0);
-    RooRealVar phi("phi", "phi", -3.14, 3.14);
-    RooRealVar hel("hel", "hel", -1, 1);
-    
-    RooGaussian sig("sig", "gaussian Fit", Mx, mu_sig, sigma_sig);
-    RooGaussian background("background", "Background", Mx, mu_bkg,sigma_bkg);
-    RooAddPdf model_ext("model_ext", "Signal + Background", RooArgList(sig, background), RooArgList(N_sig, N_bkg));
-    
+    std::string cut_str;
+    cut_str = Form("Mdiphoton<0.16 && 0.115<Mdiphoton && 0.65<Mh&&Mh<0.9&& %f<%s&&%s<%f",obs2min,obs2_str,obs2_str,obs2max);
+    // RooRealVar Mh("Mh", "Mh", 0.65, 0.9); 
+    // RooRealVar Mdiphoton("Mdiphoton", "Mdiphoton", 0.115, 0.65); 
+    // RooRealVar obs2(obs2_str, obs2_str,0); 
+    TFile temp_file(Form("%s/Mxtempcut_tree.root",outputDir.c_str()),"RECREATE");
+    TTree* cut_tree = uncut->CopyTree(cut_str.c_str());
+    double N_sig_max = cut_tree->GetEntries();
+    double N_bkg_max = cut_tree->GetEntries();
     TCanvas c2D;
     c2D.SetTickx();
     c2D.SetTicky();
 
     double bnmin = bn_edges.at(0) - std::abs(0.1*bn_edges.at(0));
     double bnmax = bn_edges.back() + 0.1*bn_edges.back();
-    TH2F binning("binning",Form("binning scheme;%s ;#phi_{h} [rad]",obs_str),100,bnmin,bnmax,100,-3.2,3.2);
-
-    chain->Draw(Form("phi:%s>>binning",obs_str));
     
+    TH2F binning("binning",Form("binning scheme;%s ;#phi_{h} [rad]",obs_str),100,bnmin,bnmax,100,-3.2,3.2);
+    cut_tree->Draw(Form("phi:%s>>binning",obs_str));
     
     binning.SetStats(0);
     binning.Draw();
@@ -408,7 +385,34 @@ std::vector<double> PhiBinnedFitRunner::Run_mxFit(const std::vector<double>& bn_
         line->Draw();
         lines.push_back(line);
             }
-    c2D.SaveAs(Form("%s/MxChi2_2D%sbinningPlot.png",outputDir.c_str(),obs_str));
+    c2D.SaveAs(Form("%s/MxChi2_2D%sbinningPlot_%s%.2f-%.2f.png",outputDir.c_str(),obs_str,obs2_str,obs2min,obs2max));
+    cut_tree->Write();
+    temp_file.Close();
+    
+    
+    //NOTE: this is technically only the polarization for RGA Inbending fall 2018. The other polarization info is found in Constants.h file in src 
+    double beam_pol = 0.8592;
+    
+    RooRealVar Mx("Mx", "Mx", 0.6, 1.7); 
+    Mx.setRange("fullRange", 0.6, 1.7); 
+    
+    RooRealVar mu_sig("mu_{sig}", "mu", 0.94, 0.85, 1.2);
+    RooRealVar sigma_sig("#sigma_{sig}", "sigma", 0.06, 0.01, 0.13);
+    RooRealVar mu_bkg("mu_{bkg}", "mu", 2, 1.2, 3);
+    RooRealVar sigma_bkg("#sigma_{bkg}", "sigma", 0.06, 0.01, 0.4);
+    
+    RooRealVar N_sig("N_{sig}", "N_sig", 10000, 0, N_sig_max);
+    RooRealVar N_bkg("N_{bkg}", "N_bkg", 10000, 900, N_bkg_max); //high min bc when N_bkg=0, the fit fails
+    
+    RooRealVar obs(obs_str, obs_str,0);
+    RooRealVar phi("phi", "phi", -3.14, 3.14);
+    RooRealVar hel("hel", "hel", -1, 1);
+    
+    RooGaussian sig("sig", "gaussian Fit", Mx, mu_sig, sigma_sig);
+    RooGaussian background("background", "Background", Mx, mu_bkg,sigma_bkg);
+    RooAddPdf model_ext("model_ext", "Signal + Background", RooArgList(sig, background), RooArgList(N_sig, N_bkg));
+    
+    
 
     //Loop over bins
     std::vector<double> results;
@@ -420,6 +424,9 @@ std::vector<double> PhiBinnedFitRunner::Run_mxFit(const std::vector<double>& bn_
     SinCanvas->Divide(grid_n,grid_n);
     TCanvas* Nasym_c = new TCanvas("Nasym_c","Nasym_c",800,800);
     Nasym_c->Divide(grid_n,grid_n);
+
+    TFile* infile = TFile::Open(Form("%s/Mxtempcut_tree.root",outputDir.c_str()),"READ");
+    TTree* chain = (TTree*)infile->Get(treeName);
     
     for (size_t i = 0; i < bn_edges.size() - 1; ++i) {
         std::cout<<"--------------------------------------------------------------------------------"<<std::endl;
@@ -432,15 +439,17 @@ std::vector<double> PhiBinnedFitRunner::Run_mxFit(const std::vector<double>& bn_
         double obsmax = bn_edges[i + 1];
         for (size_t j = 0; j < phibn_edges.size() - 1; ++j) {
             std::cout<<"\033[0;32mFitting "<<obs_str<<"bin "<<i<<" phi bin "<<j<<"\033[0m\n"<<std::endl;
+            
             double phimin = phibn_edges[j];
             double phimax = phibn_edges[j + 1];
-
+            
             TString cut = Form("%s > %f && %s < %f && phi > %f && phi < %f && hel == -1", obs_str,obsmin, obs_str,obsmax, phimin, phimax);
             RooDataSet neg_DS("neg_DS", "neg_DS", chain, RooArgSet(Mx, obs, phi, hel), cut);
-
+            
             cut = Form("%s > %f && %s < %f && phi > %f && phi < %f && hel == 1", obs_str,obsmin, obs_str,obsmax, phimin, phimax);
             RooDataSet pos_DS("pos_DS", "pos_DS", chain, RooArgSet(Mx, obs, phi, hel), cut);
-
+            
+            
             //calculate phi location of the average number of events
             TH1F* hphi = new TH1F(Form("h_%d_%d",i,j),"histogram of phi in this bin",200,-3.14,3.14);
             cut = Form("%s > %f && %s < %f && phi > %f && phi < %f", obs_str,obsmin, obs_str,obsmax, phimin, phimax);
@@ -453,7 +462,7 @@ std::vector<double> PhiBinnedFitRunner::Run_mxFit(const std::vector<double>& bn_
             double N_sig_neg = N_sig.getVal();
             double N_sig_neg_err = N_sig.getError();
             RooPlot* frame_neg = Mx.frame(0.6, 2.3);
-            PlotSigFit(model_ext, neg_DS,frame_neg,"neg",i,j,outputDir,obs_str,obsmin,obsmax,phimin,phimax,"Mx");
+            PlotSigFit(model_ext, neg_DS,frame_neg,"neg",i,j,outputDir,obs_str,obsmin,obsmax,phimin,phimax,"Mx",obs2_str,obs2min,obs2max);
             delete frame_neg;
             
             //long N_bkg_neg = N_bkg.getVal();
@@ -461,7 +470,7 @@ std::vector<double> PhiBinnedFitRunner::Run_mxFit(const std::vector<double>& bn_
             double N_sig_pos = N_sig.getVal();
             double N_sig_pos_err = N_sig.getError();
             RooPlot* frame_pos = Mx.frame(0.6, 2.3);
-            PlotSigFit(model_ext, pos_DS,frame_pos,"pos",i,j,outputDir,obs_str,obsmin,obsmax,phimin,phimax,"Mx");
+            PlotSigFit(model_ext, pos_DS,frame_pos,"pos",i,j,outputDir,obs_str,obsmin,obsmax,phimin,phimax,"Mx",obs2_str,obs2min,obs2max);
             delete frame_pos;
 
             
@@ -532,8 +541,8 @@ std::vector<double> PhiBinnedFitRunner::Run_mxFit(const std::vector<double>& bn_
         
     }
     std::cout<<"\033[0;32mSuccessfully completed phiBinning\033[0m\n"<<std::endl;
-    Nasym_c->SaveAs(Form("%s/Mx%sNasym_grid.png",outputDir.c_str(),obs_str));
-    SinCanvas->SaveAs(Form("%s/MxPhiBinningSinFits_%s.png",outputDir.c_str(),obs_str));
+    Nasym_c->SaveAs(Form("%s/Mx%sNasym_grid_%s%.2f-%.2f.png",outputDir.c_str(),obs_str,obs2_str,obs2min,obs2max));
+    SinCanvas->SaveAs(Form("%s/MxPhiBinningSinFits_%s_%s%.2f-%.2f.png",outputDir.c_str(),obs_str,obs2_str,obs2min,obs2max));
     delete SinCanvas;
     delete Nasym_c;
     return results;

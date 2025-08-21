@@ -187,6 +187,8 @@ double Kinematics::z(TLorentzVector init_target, TLorentzVector part, TLorentzVe
   return (init_target*part)/(init_target*q);
 }
 
-double Kinematics::t(TLorentzVector init_target,TLorentzVector recoilBaryon){
-    return (recoilBaryon - init_target)*(recoilBaryon - init_target);
+double Kinematics::t_lep(TLorentzVector electron,TLorentzVector beam,TLorentzVector Ph){
+    return (electron - beam + Ph)*(electron - beam + Ph);
 }
+
+

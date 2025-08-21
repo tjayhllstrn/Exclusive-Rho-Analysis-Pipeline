@@ -6,8 +6,11 @@
 #include "../src/Structs.h"
 #include "../src/Kinematics.C"
 
-//clas12root -l -b -q 'macros/hipo2tree_pippi0.C("/cache/clas12/rg-a/production/recon/fall2018/torus-1/pass1/v1/dst/train/nSidis/nSidis_005032.hipo" , "out/test_pippi0/nSidis_005032.root", 500)'
+//clas12root -l -b -q 'macros/hipo2tree_pippi0.C("/lustre24/expphy/cache/clas12/rg-a/production/recon/fall2018/torus-1/pass2/main/train/nSidis/nSidis_005032.hipo" , "out/pippi0_fall2018_in_pass2/nSidis_005032.root", -1)'
 
+//clas12root -l -b -q 'macros/hipo2tree_pippi0.C("/lustre24/expphy/cache/clas12/rg-a/production/recon/fall2018/torus-1/pass2/main/train/nSidis/nSidis_005036.hipo" , "out/pippi0_fall2018_in_pass2/nSidis_005036.root", -1)'
+
+//clas12root -l -b -q 'macros/hipo2tree_pippi0.C("/lustre24/expphy/cache/clas12/rg-a/production/montecarlo/clasdis_pass2/fa18_inb/clasdis_rga_fa18_inb_45nA_10604MeV-0001.hipo" , "out/MC_pippi0_fall2018_in_pass2/clasdis_rga_fa18_inb_45nA_10604MeV-0001.root", -1)'
 
 // /w/hallb-scshelf2102/clas12/users/tjhellst/clas-ana-scaffold-tyler/
 int hipo2tree_pippi0(const char* hipoFile = "",
@@ -29,7 +32,7 @@ int hipo2tree_pippi0(const char* hipoFile = "",
 
     //use the config to select only the events in the hipo files that have the particles we are interested in
     auto _config_c12=_chain.GetC12Reader();
-    _config_c12->addAtLeastPid(11, 1); //make sure there is at least one electron
+    _config_c12->addAtLeastPid(11, 1); //make sure there is at least one electron - filters through events before I do by checking final states
     _config_c12->addAtLeastPid(211, 1); // at least one pi plus
     _config_c12->addAtLeastPid(22, 2); // at least 2 photons (pi0 decay products)
     //_config_c12->addAtLeastPid(2112,1); //at least one DETECTED neutron
@@ -44,7 +47,6 @@ int hipo2tree_pippi0(const char* hipoFile = "",
     if (hipoFilePath.find("rg-a") != std::string::npos &&
         hipoFilePath.find("montecarlo") == std::string::npos) {
         doQADB = true;
-        hipo_is_mc = true;
     }
     if (hipoFilePath.find("montecarlo")!=std::string::npos){
         hipo_is_mc = true;

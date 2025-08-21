@@ -2,7 +2,9 @@
 #include "../src/Kinematics.C"
 #include "../src/TreeManager.C"
 
-//clas12root -l -b -q 'macros/pippi0Builder.C("out/pippi0_fall2018_in_pass1/pippi0_fall2018_in_pass1.root")'
+//clas12root -l -b -q 'macros/pippi0Builder.C("out/pippi0_fall2018_in_pass2/nSidis_005032.root")'
+//clas12root -l -b -q 'macros/pippi0Builder.C("out/pippi0_fall2018_in_pass2/nSidis_005036.root")'
+//clas12root -l -b -q 'macros/pippi0Builder.C("out/MC_pippi0_fall2018_in_pass2/clasdis_rga_fa18_inb_45nA_10604MeV-0001.root")'
 
 int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
     
@@ -74,11 +76,11 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
     treename = "pippi0";
     //make a tree with the name pippi0
     TTree *outtree = new TTree(treename.Data(),"Tree");
-    double z, pT, phih, Mx, xF, xF1, xF2, Mh,eps,gamma, Mdiphoton, th,cth;
-    double z_true, pT_true, phih_true, Mx_true, xF_true, xF1_true, xF2_true, Mh_true, Mdiphoton_true, th_true,cth_true;
-    double MCtrue_containsNeutron,truepip_pid,truepho2_pid,truepho1_pid,trueelectron_pid;
+    double z, pT, phih, Mx, xF, xF1, xF2, Mh,eps,gamma, Mdiphoton, th,cth,exclusive,containsNeutron;
+    double z_true, pT_true, phih_true, Mx_true, xF_true, xF1_true, xF2_true, Mh_true, Mdiphoton_true, th_true,cth_true,t_elec;
+    double MCtrue_containsNeutron,truepip_pid,truepho2_pid,truepho1_pid,trueelectron_pid,t_elec_true;
     double MCphoparent_samepi0,MCpippi0parent_samerho,truepipparent_pid,truepipparent_id,truepho2parentparent_pid,truepho2parentparent_id,truepho2parent_pid;
-    double truepho2parent_id,truepho1parentparent_pid,truepho1parentparent_id,truepho1parent_pid,truepho1parent_id;
+    double truepho2parent_id,truepho1parentparent_pid,truepho1parentparent_id,truepho1parent_pid,truepho1parent_id,MCtrue_exclusive;
     Mh=0;
     Mh_true=0;
     // Branching kinematic variables for the electron
@@ -118,6 +120,7 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
     outtree->Branch("cth", &cth, "cth/D");
     outtree->Branch("cth_true", &cth_true, "cth_true/D");
 
+    outtree->Branch("containsNeutron",&containsNeutron,"containsNeutron/D");
     outtree->Branch("MCtrue_containsNeutron",&MCtrue_containsNeutron,"MCtrue_containsNeutron/D");
     outtree->Branch("truepho1_pid",&truepho1_pid,"truepho1_pid/D");
     outtree->Branch("truepho2_pid",&truepho2_pid,"truepho2_pid/D");
@@ -136,6 +139,14 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
     outtree->Branch("truepho1parentparent_id",&truepho1parentparent_id,"truepho1parentparent_id/D");
     outtree->Branch("truepho1parent_pid",&truepho1parent_pid,"truepho1parent_pid/D");
     outtree->Branch("truepho1parent_id",&truepho1parent_id,"truepho1parent_id/D");
+
+    outtree->Branch("t_elec",&t_elec,"t_elec/D");
+    outtree->Branch("t_elec_true",&t_elec_true,"t_elec_true/D");
+
+    outtree->Branch("MCtrue_exclusive",&MCtrue_exclusive,"MCtrue_exclusive/D");
+    outtree->Branch("exclusive",&exclusive,"exclusive/D");
+
+    
 
 
     int GBTcounter = 0;
@@ -191,7 +202,7 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
             }
         }
         
-        if(idx_e==-1) continue;       
+        if(idx_e==-1) continue;  //no electron in event     
         electron.SetPxPyPzE(px[idx_e],py[idx_e],pz[idx_e],E[idx_e]);
         trueelectron.SetPxPyPzE(truepx[idx_e],truepy[idx_e],truepz[idx_e],trueE[idx_e]);
         q = init_electron-electron;
@@ -256,11 +267,35 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
         
                         Mx = (init_electron+init_target-electron-dihadron).M();
                         Mx_true = (init_electron+init_target-trueelectron-truedihadron).M();
+                        
+                        //check for neutron in pid list. If there is a neutron, assume exclusive event, but check to see if there are other particles. If there are other particles, it is not an exclusive event. This means an "exclusive event" has a diphoton, a pip, and a neutron
                         MCtrue_containsNeutron = 0;
+                        MCtrue_exclusive = 0;
                         for(int m = 0; m<Nmax;m++){
                             if(truepid[m]!=2112)continue;
                             MCtrue_containsNeutron = 1;
+                            MCtrue_exclusive = 1;
+                            for(int n=0; n<Nmax;n++){
+                                if(truepid[n]==-999&&n==m&&n==l&&n==j&&n==k)continue;
+                                MCtrue_exclusive = 0;
+                            }
                         }
+
+                        containsNeutron = 0;
+                        exclusive = 0;
+                        for(int m = 0; m<Nmax;m++){
+                            if(pid[m]!=2112)continue;
+                            containsNeutron = 1;
+                            exclusive = 1;
+                            for(int n=0; n<Nmax;n++){
+                                if(pid[n]==-999&&n==m&&n==l&&n==j&&n==k)continue;
+                                exclusive = 0;
+                            }
+                        }
+                        
+                        
+                        
+                        
         
                         xF = kin.xF(q,dihadron,init_target,W);
                         xF_true = kin.xF(trueq,truedihadron,init_target,trueW);
@@ -279,8 +314,11 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
 
                         cth = cos(th);
                         cth_true = cos(th);
+
+                        t_elec = kin.t_lep(electron,init_electron,dihadron);
+                        t_elec_true = kin.t_lep(trueelectron,init_electron,truedihadron);
         
-                        if(!(electron.E()>0&&pip.P()>1.25&&diphoton.P()>1.25&&xF1>0&&xF2>0&&p_gamma[j]>0.78&&p_gamma[k]>0.78)){
+                        if(!(electron.E()>0&&xF1>0&&xF2>0&&p_gamma[j]>0.78&&p_gamma[k]>0.78)){ 
                             if (p_gamma[j]>0.78||p_gamma[k]>0.78){
                                 GBTcounter++;
                                    }

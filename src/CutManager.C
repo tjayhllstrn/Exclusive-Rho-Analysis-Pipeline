@@ -125,7 +125,7 @@ bool CutManager::apply_electron_cuts(part particle){
 // Apply all relevant pion cuts
 bool CutManager::apply_pion_cuts(part particle, part electron){
   if(DC_fiducial_cut(particle)==false) return false;
-  if(chi2pid(particle,0)==false) return false;
+  if(chi2pid(particle,2)==false) return false; //set to 2 to only have chi2 3 sigma cut
   if(vz_e_pi(particle,electron)==false) return false;
   //if(hadronStatus(particle)==false) return false; DEPRECATED, handled in event loop
   return true;
@@ -153,7 +153,9 @@ bool CutManager::DC_fiducial_cut(part particle){
   }
   return true;
 }
-
+bool CutManager::DC_fiducial_cit_edge(part particle){
+    
+}
 // 
 bool CutManager::DC_fiducial_cut_theta_phi(part particle){
 
@@ -231,7 +233,7 @@ bool CutManager::DC_fiducial_cut_XY(part particle){
   // Require RGA for this fiducial cut
   // if(_run_period==RGC){return true;}
     
-  const auto minparams = ((_torusBending==-1) ? minparams_in_XY : minparams_out_XY);
+  const auto = ((_torusBending==-1) ? minparams_in_XY : minparams_out_XY);
   const auto maxparams = ((_torusBending==-1) ? maxparams_in_XY : maxparams_out_XY);
   double X=0;
   double Y=0;
@@ -340,7 +342,7 @@ bool CutManager::chi2pid(part particle,int isStrict){
   double p=particle.p;
   if(pid==211||pid==-211){
     // Determine pion charge dependent C value
-    float C = 0.0;
+    float C = 0.0; //These C values are sigma of the projected y gaussian for respective particle.
     (pid==211 ? C=0.88 : C=0.93);
     if(chi2<-3*C) return false;
     // 2 different pion chi2pid regions
@@ -360,6 +362,9 @@ bool CutManager::chi2pid(part particle,int isStrict){
       else
 	passChargedPionChi2=chi2< C * (-1.14099 + 24.14992 * exp(-p/1.36554) + 2.66876 * exp(-p/6.80552));
 
+    }
+    else if(isStrict==2){ //bypass chi2pid and only keep 3 sigma cut
+        passChargedPionChi2=chi2<C*3;
     }
   }
   return passChargedPionChi2;
