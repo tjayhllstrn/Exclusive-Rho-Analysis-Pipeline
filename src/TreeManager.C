@@ -47,6 +47,7 @@ class EventTree : public BaseTree {
         double nphe_htcc[kNmax];
         int sector[kNmax];
         double traj_x1[kNmax], traj_y1[kNmax], traj_z1[kNmax], traj_x2[kNmax], traj_y2[kNmax], traj_z2[kNmax], traj_x3[kNmax], traj_y3[kNmax], traj_z3[kNmax];
+        double edge_1[kNmax], edge_2[kNmax],edge_3[kNmax];
         
     
     public:
@@ -167,6 +168,9 @@ class EventTree : public BaseTree {
             tree->Branch("traj_x3", traj_x3, "traj_x3[Nmax]/D");
             tree->Branch("traj_y3", traj_y3, "traj_y3[Nmax]/D");
             tree->Branch("traj_z3", traj_z3, "traj_z3[Nmax]/D");
+            tree->Branch("edge_1", edge_1, "edge_1[Nmax]/D");
+            tree->Branch("edge_2", edge_2, "edge_2[Nmax]/D");
+            tree->Branch("edge_3", edge_3, "edge_3[Nmax]/D");
 
             tree->Branch("nphe_ltcc", nphe_ltcc, "nphe_ltcc[Nmax]/D");
             tree->Branch("nphe_htcc", nphe_htcc, "nphe_htcc[Nmax]/D");
@@ -278,6 +282,9 @@ class EventTree : public BaseTree {
             traj_x3[i] = par.traj_x3;
             traj_y3[i] = par.traj_y3;
             traj_z3[i] = par.traj_z3;
+            edge_1[i] = par.edge_1;
+            edge_2[i] = par.edge_2;
+            edge_3[i] = par.edge_3;
             nphe_ltcc[i] = par.nphe_ltcc;
             nphe_htcc[i] = par.nphe_htcc;
         }

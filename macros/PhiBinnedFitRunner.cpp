@@ -143,8 +143,6 @@ std::vector<double> PhiBinnedFitRunner::Run(const std::vector<double>& bn_edges,
         cut_str = Form("0.85<Mx && Mx<1.05&& %f<%s&&%s<%f",obs2min,obs2_str,obs2_str,obs2max);
     }
     TTree* chain = uncut.CopyTree(cut_str);
-    //NOTE: this is technically only the polarization for RGA Inbending fall 2018. The other polarization info is found in Constants.h file in src
-    double beam_pol = 0.8592;
     
     RooRealVar Mh("Mh", "Mh", 0.4, 1.7); 
     Mh.setRange("fullRange", 0.4, 1.4); //0.4-1.7
@@ -253,13 +251,21 @@ std::vector<double> PhiBinnedFitRunner::Run(const std::vector<double>& bn_edges,
             PlotSigFit(model_ext, pos_DS,frame_pos,"pos",i,j,outputDir,obs_str,obsmin,obsmax,phimin,phimax,"Mh",obs2_str,obs2min,obs2max);
             delete frame_pos;
 
+            //beam polarization taken to be the avg of polarizations in the sample
+            TH1F hist1("hist1","hist1",200,0,1);
+            chain->Draw("Pol>>hist1",Form("%f<%s && %s<%f",obsmin,obs_str,obs_str,obsmax),"goff");
+            double Pol_avg = hist1.GetMean();
+            double Pol_stdv = hist1.GetStdDev();
+            double Pol_N_hist = hist1.GetEntries();
+            double Pol_avg_err = Pol_stdv / sqrt(Pol_N_hist);
             
             //calculate A for this phi bin 
             double denom = N_sig_pos + N_sig_neg;
-            double A = (1/beam_pol)*(N_sig_pos - N_sig_neg) / denom;
-            double dA_dNp = 2.0*N_sig_neg/(denom*denom);
-            double dA_dNm = -2.0*N_sig_pos/(denom*denom);
-            double A_err = sqrt(pow(dA_dNp * N_sig_pos_err,2) + pow(dA_dNm * N_sig_neg_err,2));
+            double A = (1/Pol_avg)*(N_sig_pos - N_sig_neg) / denom;
+            double dA_dNp = (1/Pol_avg)*2.0*N_sig_neg/(denom*denom);
+            double dA_dNm = -(1/Pol_avg)*2.0*N_sig_pos/(denom*denom);
+            double dA_dpol = -(1/Pol_avg)*A;
+            double A_err = sqrt(pow(dA_dNp * N_sig_pos_err,2) + pow(dA_dNm * N_sig_neg_err,2)+pow(dA_dpol * Pol_avg_err,2));
             Aphi.push_back(A);
             Aphi_errs.push_back(A_err);
             N_pos.push_back(N_sig_pos);
@@ -388,10 +394,7 @@ std::vector<double> PhiBinnedFitRunner::Run_mxFit(const std::vector<double>& bn_
     c2D.SaveAs(Form("%s/MxChi2_2D%sbinningPlot_%s%.2f-%.2f.png",outputDir.c_str(),obs_str,obs2_str,obs2min,obs2max));
     cut_tree->Write();
     temp_file.Close();
-    
-    
-    //NOTE: this is technically only the polarization for RGA Inbending fall 2018. The other polarization info is found in Constants.h file in src 
-    double beam_pol = 0.8592;
+
     
     RooRealVar Mx("Mx", "Mx", 0.6, 1.7); 
     Mx.setRange("fullRange", 0.6, 1.7); 
@@ -473,13 +476,21 @@ std::vector<double> PhiBinnedFitRunner::Run_mxFit(const std::vector<double>& bn_
             PlotSigFit(model_ext, pos_DS,frame_pos,"pos",i,j,outputDir,obs_str,obsmin,obsmax,phimin,phimax,"Mx",obs2_str,obs2min,obs2max);
             delete frame_pos;
 
+            //beam polarization taken to be the avg of polarizations in the sample
+            TH1F hist1("hist1","hist1",200,0,1);
+            chain->Draw("Pol>>hist1",Form("%f<%s && %s<%f",obsmin,obs_str,obs_str,obsmax),"goff");
+            double Pol_avg = hist1.GetMean();
+            double Pol_stdv = hist1.GetStdDev();
+            double Pol_N_hist = hist1.GetEntries();
+            double Pol_avg_err = Pol_stdv / sqrt(Pol_N_hist);
             
             //calculate A for this phi bin 
             double denom = N_sig_pos + N_sig_neg;
-            double A = (1/beam_pol)*(N_sig_pos - N_sig_neg) / denom;
-            double dA_dNp = 2.0*N_sig_neg/(denom*denom);
-            double dA_dNm = -2.0*N_sig_pos/(denom*denom);
-            double A_err = sqrt(pow(dA_dNp * N_sig_pos_err,2) + pow(dA_dNm * N_sig_neg_err,2));
+            double A = (1/Pol_avg)*(N_sig_pos - N_sig_neg) / denom;
+            double dA_dNp = (1/Pol_avg)*2.0*N_sig_neg/(denom*denom);
+            double dA_dNm = -(1/Pol_avg)*2.0*N_sig_pos/(denom*denom);
+            double dA_dpol = -(1/Pol_avg)*A;
+            double A_err = sqrt(pow(dA_dNp * N_sig_pos_err,2) + pow(dA_dNm * N_sig_neg_err,2)+pow(dA_dpol * Pol_avg_err,2));
             Aphi.push_back(A);
             Aphi_errs.push_back(A_err);
             N_pos.push_back(N_sig_pos);

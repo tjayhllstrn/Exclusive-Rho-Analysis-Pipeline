@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 #This macro inputs a group of root files with TTrees, an output directory, a variable to bin in, and the bin edges. It outputs Asymmetry fitting values and errors based on the single maximum liklihood fit to the probability fxn deroved from the cross section for exclusive rho production.
-#macros/AsymmetryFitting.py RGAinbending_thetabinning_MLM
+#run with config file: 
+#macros/AsymmetryFitting.py "config file name" (ex: pippi0_RGAinbending_zbinning)
 import sys
 import os
 from importlib import import_module
@@ -262,4 +263,5 @@ def RunMhFitChi2(bin_edges,phibn_edges,inputFiles,outputDir,obs,treeName,obs2,ob
 
 if __name__ == "__main__":
     input_params = inputs()
-    main(*input_params)
+    input_files = sys.argv[2:]
+    main(input_files,*input_params)

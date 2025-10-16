@@ -282,6 +282,9 @@ struct part{
   double traj_x3=-999;
   double traj_y3=-999;
   double traj_z3=-999;
+  double edge_1=-999; //added pass2 edge variable
+  double edge_2=-999; //added pass2 edge variable
+  double edge_3=-999; //added pass2 edge variable
   
   // Cherenkov Info
   double nphe_ltcc=-999;

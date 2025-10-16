@@ -5,8 +5,12 @@
 #include "../src/Constants.h"
 #include "../src/Structs.h"
 #include "../src/Kinematics.C"
+#include "QADB.h"
+using namespace QA;
+
 
 //clas12root -l -b -q 'macros/hipo2tree_pippi0.C("/lustre24/expphy/cache/clas12/rg-a/production/recon/fall2018/torus-1/pass2/main/train/nSidis/nSidis_005032.hipo" , "out/pippi0_fall2018_in_pass2/nSidis_005032.root", -1)'
+//clas12root -l -b -q 'macros/hipo2tree_pippi0.C("/lustre24/expphy/cache/clas12/rg-a/production/recon/fall2018/torus-1/pass2/main/train/nSidis/nSidis_005032.hipo" , "out/test/nSidis_005032.root", -1)'
 
 //clas12root -l -b -q 'macros/hipo2tree_pippi0.C("/lustre24/expphy/cache/clas12/rg-a/production/recon/fall2018/torus-1/pass2/main/train/nSidis/nSidis_005036.hipo" , "out/pippi0_fall2018_in_pass2/nSidis_005036.root", -1)'
 
@@ -17,7 +21,6 @@ int hipo2tree_pippi0(const char* hipoFile = "",
     const char* outputFile = "",
     const int maxEvents = 100){
 
-    cout << "test worked";
     
     // Create a TFile to save the data
     TFile* fOut = new TFile(outputFile, "RECREATE");
@@ -35,7 +38,6 @@ int hipo2tree_pippi0(const char* hipoFile = "",
     _config_c12->addAtLeastPid(11, 1); //make sure there is at least one electron - filters through events before I do by checking final states
     _config_c12->addAtLeastPid(211, 1); // at least one pi plus
     _config_c12->addAtLeastPid(22, 2); // at least 2 photons (pi0 decay products)
-    //_config_c12->addAtLeastPid(2112,1); //at least one DETECTED neutron
 
     //generate the object that contains all the information for the desired events
     auto& _c12 = _chain.C12ref();
@@ -51,11 +53,22 @@ int hipo2tree_pippi0(const char* hipoFile = "",
     if (hipoFilePath.find("montecarlo")!=std::string::npos){
         hipo_is_mc = true;
     }
-    //run a quality assurance script made for this run data set
-    if (doQADB) {
-        _config_c12->applyQA("pass1"); //specifies which QADB to use
-        //_config_c12->db()->qadb_addQARequirement("OkForAsymmetry"); //specifies which events to cut from the data. It seems that "OkForAsymmetry" was discontinued: https://github.com/JeffersonLab/clas12-qadb?tab=readme-ov-file#info
-    }
+    //configure qa events to pass (based on ex https://github.com/JeffersonLab/clas12-qadb/blob/main/srcC/tests/testOkForAsymmetry.cpp)
+    QADB * qa = new QADB("pass2");
+    qa->CheckForDefect("TotalOutlier");     // these choices match the criteria of `OkForAsymmetry`
+    qa->CheckForDefect("TerminalOutlier");
+    qa->CheckForDefect("MarginalOutlier");
+    qa->CheckForDefect("SectorLoss");
+    qa->CheckForDefect("Misc");
+    for(int run : { // list of runs with `Misc` defect that are allowed by `OkForAsymmetry`
+      5046, 5047, 5051, 5128, 5129, 5130, 5158, 5159,
+      5160, 5163, 5165, 5166, 5167, 5168, 5169, 5180,
+      5181, 5182, 5183, 5400, 5448, 5495, 5496, 5505,
+      5567, 5610, 5617, 5621, 5623, 6736, 6737, 6738,
+      6739, 6740, 6741, 6742, 6743, 6744, 6746, 6747,
+      6748, 6749, 6750, 6751, 6753, 6754, 6755, 6756,
+      6757})
+    qa->AllowMiscBit(run);
 
     // Add Analysis Objects
     // -------------------------------------
@@ -91,6 +104,12 @@ int hipo2tree_pippi0(const char* hipoFile = "",
         whileidx++;
         _cm.set_run(event_info.run); //sets relevant runinfo for the cutmanager class to use
 
+        // QA cuts
+        if(qa->Pass(event_info.run,event_info.evnum)) {
+          badAsym++;
+          continue;
+        }
+        // event_info.hel *= qa->CorrectHelicitySign(event_info.run,event_info.evnum);  //would take the place of ln36-37 in CLAS12Ana.C if it worked...
 
         //Now perform cuts
         //----------------------------------------------------------------------------------------------------------------------------------------------------------

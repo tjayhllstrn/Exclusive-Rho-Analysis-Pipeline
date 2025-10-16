@@ -422,8 +422,8 @@ const double minparams_out_theta_phi[6][6][3][4] = {
 
 
 
-// Electron Sampling Fraction
-bool sampFracInfo(int _runNumber, double (&sfMu)[3][6], double (&sfSigma)[3][6]){
+//Electron Sampling Fraction parameters - RGA pass1
+bool sampFracInfo_pass1(int _runNumber, double (&sfMu)[3][6], double (&sfSigma)[3][6]){
   if( (_runNumber>=5032 && _runNumber<=5666) || (_runNumber>=6616 && _runNumber<=6783) ) { // RGA
     sfMu[0][0]    = 0.2531;   sfMu[0][1]    = 0.2550;   sfMu[0][2]    = 0.2514;   sfMu[0][3]    = 0.2494;   sfMu[0][4]    = 0.2528;   sfMu[0][5]    = 0.2521;
     sfMu[1][0]    = -0.6502;  sfMu[1][1]    = -0.7472;  sfMu[1][2]    = -0.7674;  sfMu[1][3]    = -0.4913;  sfMu[1][4]    = -0.3988;  sfMu[1][5]    = -0.703;
@@ -489,6 +489,79 @@ bool sampFracInfo(int _runNumber, double (&sfMu)[3][6], double (&sfSigma)[3][6])
       sfSigma[2][s] = -0.319801;
     }
   }
+  else {
+    return false;
+  }
+    
+  return true;
+}
+
+bool sampFracInfo_pass2MC(int _runNumber, double (&sfMu)[4][6], double (&sfSigma)[4][6]){
+  if(_runNumber==-11) { // inbending RGA MC
+    sfMu[0][0]    = 0.118444;     sfMu[0][1]    = 0.118383;    sfMu[0][2]    = 0.118318;    sfMu[0][3]    = 0.118531;    sfMu[0][4]    = 0.117475;    sfMu[0][5]    = 0.119179;
+    sfMu[1][0]    = -0.0445042;  sfMu[1][1]    = -0.0326496;  sfMu[1][2]    = 0.00402908;  sfMu[1][3]    = 0.0384926;   sfMu[1][4]    = -0.0768068;  sfMu[1][5]    = 0.0045002;
+    sfMu[2][0]    = 0.00522281;  sfMu[2][1]    = 0.00528503;  sfMu[2][2]    = 0.00542581;  sfMu[2][3]    = 0.00480286;  sfMu[2][4]    = 0.00601034;  sfMu[2][5]    = 0.00482612;
+    sfMu[3][0]    = -0.000511299;sfMu[3][1]    = -0.000504437;sfMu[3][2]    = -0.000529496;sfMu[3][3]    = -0.000449033;sfMu[3][4]    = -0.000578208;sfMu[3][5]    = -0.00046328;
+    sfSigma[0][0] = 0.0204537;   sfSigma[0][1] = 0.0242836;   sfSigma[0][2] = 0.0320663;   sfSigma[0][3] = 0.0171258;   sfSigma[0][4] = 0.0236728;   sfSigma[0][5] = 0.0157762;
+    sfSigma[1][0] = 0.00334198;  sfSigma[1][1] = -0.000192939;sfSigma[1][2] = -0.00718171; sfSigma[1][3] = 0.00698743;  sfSigma[1][4] = 0.000511942; sfSigma[1][5] = 0.00801015;
+    sfSigma[2][0] = -0.00299872; sfSigma[2][1] = -0.00369136; sfSigma[2][2] = -0.00537603; sfSigma[2][3] = -0.00246959; sfSigma[2][4] = -0.00371171; sfSigma[2][5] = -0.00215882;
+    sfSigma[3][0] = 0.000232288; sfSigma[3][1] = 0.000277151; sfSigma[3][2] = 0.000425544; sfSigma[3][3] = 0.00018372;  sfSigma[3][4] = 0.000290388; sfSigma[3][5] = 0.000160679;
+  }
+  else if(_runNumber==11){ //outbending RGA MC
+    sfMu[0][0]    = 0.118444;     sfMu[0][1]    = 0.118383;    sfMu[0][2]    = 0.118318;    sfMu[0][3]    = 0.118531;    sfMu[0][4]    = 0.117475;    sfMu[0][5]    = 0.119179;
+    sfMu[1][0]    = -0.0445042;  sfMu[1][1]    = -0.0326496;  sfMu[1][2]    = 0.00402908;  sfMu[1][3]    = 0.0384926;   sfMu[1][4]    = -0.0768068;  sfMu[1][5]    = 0.0045002;
+    sfMu[2][0]    = 0.00522281;  sfMu[2][1]    = 0.00528503;  sfMu[2][2]    = 0.00542581;  sfMu[2][3]    = 0.00480286;  sfMu[2][4]    = 0.00601034;  sfMu[2][5]    = 0.00482612;
+    sfMu[3][0]    = -0.000511299;sfMu[3][1]    = -0.000504437;sfMu[3][2]    = -0.000529496;sfMu[3][3]    = -0.000449033;sfMu[3][4]    = -0.000578208;sfMu[3][5]    = -0.00046328;
+    sfSigma[0][0] = 0.0204537;   sfSigma[0][1] = 0.0242836;   sfSigma[0][2] = 0.0320663;   sfSigma[0][3] = 0.0171258;   sfSigma[0][4] = 0.0236728;   sfSigma[0][5] = 0.0157762;
+    sfSigma[1][0] = 0.00334198;  sfSigma[1][1] = -0.000192939;sfSigma[1][2] = -0.00718171; sfSigma[1][3] = 0.00698743;  sfSigma[1][4] = 0.000511942; sfSigma[1][5] = 0.00801015;
+    sfSigma[2][0] = -0.00299872; sfSigma[2][1] = -0.00369136; sfSigma[2][2] = -0.00537603; sfSigma[2][3] = -0.00246959; sfSigma[2][4] = -0.00371171; sfSigma[2][5] = -0.00215882;
+    sfSigma[3][0] = 0.000232288; sfSigma[3][1] = 0.000277151; sfSigma[3][2] = 0.000425544; sfSigma[3][3] = 0.00018372;  sfSigma[3][4] = 0.000290388; sfSigma[3][5] = 0.000160679;
+  
+  }
+  else {
+  return false;
+  }
+    
+  return true;
+}
+
+bool sampFracInfo_pass2(int _runNumber, double (&sfmin)[3][6], double (&sfmax)[3][6]){ //from Timothy's DIS Electron PID note for RGA dated 1u8 19,202
+  if(_runNumber>=5032 && _runNumber<=5419){ // RGA fall 2018 inbending
+    sfmin[0][0]    = 0.182257;   sfmin[0][1]    = 0.179615;   sfmin[0][2]    = 0.179768;   sfmin[0][3]    = 0.179226;   sfmin[0][4]    = 0.174914;   sfmin[0][5]    = 0.182785;
+    sfmin[1][0]    = 0.007442;   sfmin[1][1]    = 0.009837;   sfmin[1][2]    = 0.011258;   sfmin[1][3]    = 0.010001;   sfmin[1][4]    = 0.011152;   sfmin[1][5]    = 0.008533;
+    sfmin[2][0]    = -0.000758;  sfmin[2][1]    = -0.000981;   sfmin[2][2]    = -0.00113;   sfmin[2][3]    = -0.000851;   sfmin[2][4]    = -0.001008;  sfmin[2][5]    = -0.000850;
+    sfmax[0][0] = 0.304421;      sfmax[0][1] = 0.306626;      sfmax[0][2] = 0.304496;      sfmax[0][3] = 0.310082;      sfmax[0][4] = 0.315217;      sfmax[0][5] = 0.307112;
+    sfmax[1][0] = -0.002123;     sfmax[1][1] = -0.001156;     sfmax[1][2] = 0.000808;      sfmax[1][3] = -0.002499;     sfmax[1][4] = -0.006281;     sfmax[1][5] = -0.000586;
+    sfmax[2][0] = -0.000286;     sfmax[2][1] = -0.000418;     sfmax[2][2] = -0.000712;     sfmax[2][3] = -0.000111;     sfmax[2][4] = 0.000256;      sfmax[2][5] = -0.000559;
+  }
+  else if(_runNumber>=5422 && _runNumber<=5666){ // RGA fall 2018 outbending
+    sfmin[0][0]    = 0.186279;   sfmin[0][1]    = 0.186446;   sfmin[0][2]    = 0.186023;   sfmin[0][3]    = 0.186014;   sfmin[0][4]    = 0.187277;   sfmin[0][5]    = 0.181060;
+    sfmin[1][0]    = 0.006740;   sfmin[1][1]    = 0.006058;   sfmin[1][2]    = 0.008322;   sfmin[1][3]    = 0.006690;   sfmin[1][4]    = 0.004536;   sfmin[1][5]    = 0.008314;
+    sfmin[2][0]    = -0.000434;  sfmin[2][1]    = -0.000374;  sfmin[2][2]    = -0.000555;  sfmin[2][3]    = -0.000387;  sfmin[2][4]    = -0.000115;  sfmin[2][5]    = -0.000519;
+    sfmax[0][0] = 0.303829;      sfmax[0][1] = 0.298393;      sfmax[0][2] = 0.300515;      sfmax[0][3] = 0.299888;      sfmax[0][4] = 0.297246;      sfmax[0][5] = 0.297379;
+    sfmax[1][0] = -0.003178;     sfmax[1][1] = -0.001543;     sfmax[1][2] = -0.000776;     sfmax[1][3] = -0.001181;     sfmax[1][4] = -0.002602;     sfmax[1][5] = -0.000577;
+    sfmax[2][0] = 0.000029;      sfmax[2][1] = -0.000090;     sfmax[2][2] = -0.000302;     sfmax[2][3] = -0.000234;     sfmax[2][4] = 0.000075;      sfmax[2][5] = -0.000283;
+  }
+  else if(_runNumber>=6616 && _runNumber<=6783) {//RGA Spring 2019 Inbending
+    sfmin[0][0]    = 0.166035;   sfmin[0][1]    = 0.187470;   sfmin[0][2]    = 0.178773;   sfmin[0][3]    = 0.176627;   sfmin[0][4]    = 0.173851;   sfmin[0][5]    = 0.183544;
+    sfmin[1][0]    = 0.017046;   sfmin[1][1]    = 0.004908;   sfmin[1][2]    = 0.012186;   sfmin[1][3]    = 0.011507;   sfmin[1][4]    = 0.012135;   sfmin[1][5]    = 0.007833;
+    sfmin[2][0]    = -0.001806;  sfmin[2][1]    = -0.000521;  sfmin[2][2]    = -0.001253;   sfmin[2][3]    = -0.001057;   sfmin[2][4]    = -0.001183;  sfmin[2][5]    = -0.000789;
+    sfmax[0][0] = 0.323043;      sfmax[0][1] = 0.296504;      sfmax[0][2] = 0.302329;      sfmax[0][3] = 0.293717;      sfmax[0][4] = 0.300202;      sfmax[0][5] = 0.303698;
+    sfmax[1][0] = -0.010838;     sfmax[1][1] = 0.004220;      sfmax[1][2] = 0.001279;      sfmax[1][3] = 0.003929;     sfmax[1][4] = 0.001455;     sfmax[1][5] = 0.000896;
+    sfmax[2][0] = 0.000676;      sfmax[2][1] = -0.001003;     sfmax[2][2] = -0.000800;     sfmax[2][3] = -0.000917;     sfmax[2][4] = -0.000786;      sfmax[2][5] = -0.000796;
+  
+  }
+  
+  // else if(_runNumber==11 || _runNumber==-11) { // MC
+  //   for(int s=0; s<6; s++) {
+  //     sfMu[0][s] = 0.248605;
+  //     sfMu[1][s] = -0.844221;
+  //     sfMu[2][s] = 4.87777;
+  //     sfSigma[0][s] = 0.00741575;
+  //     sfSigma[1][s] = 0.215861;
+  //     sfSigma[2][s] = -0.319801;
+  //   }
+  // }
   else {
     return false;
   }

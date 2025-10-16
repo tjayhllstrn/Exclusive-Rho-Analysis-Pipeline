@@ -32,11 +32,11 @@ void CLAS12Ana::get_event_info(const std::unique_ptr<clas12::clas12reader>& _c12
     event_info.evnum = _c12->getBank(_idx_RUNconfig)->getInt(_ievnum,0);//gets the event number 
     event_info.hel   = event->getHelicity(); //gets the helicity
      
-    //flips the helicity if within specific ranges defined in constants.h why???????????????????
+    //flips the helicity if within specific ranges defined in constants.h 
     if(runHelicityFlip(event_info.run))
         event_info.hel*=-1;
 
-    //determines the event polarization based on certain conditions in constants.h why???????????????????????
+    //determines the event polarization based on certain conditions in constants.h 
     event_info.Pol = runPolarization(event_info.run);
 
     //if this is an RGC run there are special things you must do

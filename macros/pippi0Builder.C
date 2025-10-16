@@ -88,6 +88,7 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
     outtree->Branch("run",&run,"run/I");
     outtree->Branch("x",&x,"x/D");
     outtree->Branch("eps",&eps,"eps/D");
+    outtree->Branch("Pol",&Pol,"Pol/D");
     outtree->Branch("gamma",&gamma,"gamma/D");
     outtree->Branch("x_true",&truex,"x_true/D");
     outtree->Branch("Q2",&Q2,"Q2/D");
