@@ -82,6 +82,8 @@ class HipoBankInterface{
   float _x_DC[3]={0,0,0};
   float _y_DC[3]={0,0,0};
   float _z_DC[3]={0,0,0};
+  float _edge[3]={0,0,0}; //added pass2 edge variable
+  
 
   float _nphe_ltcc=0;
   float _nphe_htcc=0;

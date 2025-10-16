@@ -68,7 +68,7 @@ def RunFittingMLM(obs,bin_edges,inputFiles,treeName,lower_bound,upper_bound,obs2
         
     return A_results,bin_centers
     
-def singleFit(t, obs_str,obs_min, obs_max): #NOTE: this is currently only for inbending bc of polarization number
+def singleFit(t, obs_str,obs_min, obs_max): #NOTE: DEPRECATED - this is currently only for inbending bc of polarization number
     eps = RooRealVar("eps", "eps", 0, 1)
     phi = RooRealVar("phi", "phi", -2*TMath.Pi(), 2*TMath.Pi())
     hel = RooRealVar("hel", "hel", -1, 1)
@@ -90,26 +90,25 @@ def simFit(t,obs_str,obs_min,obs_max):
     #----------------------------------------------------------------------
     #create models for positive and negative helicity probability
     #observeable:
-    
-    #NOTE: this is technically only the polarization for RGA Inbending fall 2018. The other polarization info is found in Constants.h file in src
-    beam_pol = 0.8592
+
 
     A = ROOT.RooRealVar("A","A",-1,1)
     #postive:
     eps = ROOT.RooRealVar("eps","eps",0.6,0,1)
     phi = ROOT.RooRealVar("phi","phi",0,-3.25,3.25)
     hel = RooRealVar("hel", "hel", -1, 1)
+    Pol = RooRealVar("Pol","Pol",0,1)
     obs = RooRealVar(obs_str, obs_str, obs_min, obs_max)
-    pos_expr = f"1+{beam_pol}*sqrt(2*eps*(1-eps))*A*sin(phi)"
+    pos_expr = f"1+Pol*sqrt(2*eps*(1-eps))*A*sin(phi)"
     pos_model = ROOT.RooGenericPdf("PosProbFxn","PositiveHelicityPDF",
                               pos_expr,
-                              ROOT.RooArgSet(A,eps,phi))
+                              ROOT.RooArgSet(A,eps,phi,Pol))
     
     #negative:
-    neg_expr = f"1-{beam_pol}*sqrt(2*eps*(1-eps))*A*sin(phi)"
+    neg_expr = f"1-Pol*sqrt(2*eps*(1-eps))*A*sin(phi)"
     neg_model = ROOT.RooGenericPdf("NegProbFxn","PositiveHelicityPDF",
                               neg_expr,
-                              ROOT.RooArgSet(A,eps,phi))
+                              ROOT.RooArgSet(A,eps,phi,Pol))
     
      #----------------------------------------------------------------------
     #prepare data that should be fit to this model

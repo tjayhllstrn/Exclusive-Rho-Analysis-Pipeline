@@ -29,8 +29,11 @@ class CutManager{
   bool DC_fiducial_cut(part);
   bool DC_fiducial_cut_theta_phi(part);
   bool DC_fiducial_cut_XY(part);
+  bool DC_fiducial_cut_edge(part,int);
   bool chi2pid(part,int);
-  bool EleSampFrac(part);
+  bool EleSampFrac_pass1(part);
+  bool EleSampFrac_pass2(part);
+  bool EleSampFrac_pass2MC(part);
   bool minPiMomentum(part);
   bool hadronStatus(part);
   bool VzCut(part);

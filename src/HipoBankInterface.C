@@ -126,18 +126,21 @@ bool HipoBankInterface::loadBankData(const std::unique_ptr<clas12::clas12reader>
       _x_DC[0] = _c12->getBank(_idx_RECTraj)->getFloat(_ix_RECTraj,i);
       _y_DC[0] = _c12->getBank(_idx_RECTraj)->getFloat(_iy_RECTraj,i);
       _z_DC[0] = _c12->getBank(_idx_RECTraj)->getFloat(_iz_RECTraj,i);
+      _edge[0] = _c12->getBank(_idx_RECTraj)->getFloat("edge", i);
     }else if(_c12->getBank(_idx_RECTraj)->getInt(_ilayer_RECTraj,i)==18){
       _det_DC[1] = _c12->getBank(_idx_RECTraj)->getInt(_idet_RECTraj,i);
       _path_DC[1] = _c12->getBank(_idx_RECTraj)->getFloat(_ipath_RECTraj,i);
       _x_DC[1] = _c12->getBank(_idx_RECTraj)->getFloat(_ix_RECTraj,i);
       _y_DC[1] = _c12->getBank(_idx_RECTraj)->getFloat(_iy_RECTraj,i);
       _z_DC[1] = _c12->getBank(_idx_RECTraj)->getFloat(_iz_RECTraj,i);
+      _edge[1] = _c12->getBank(_idx_RECTraj)->getFloat("edge", i);
     }else if(_c12->getBank(_idx_RECTraj)->getInt(_ilayer_RECTraj,i)==36){
       _det_DC[2] = _c12->getBank(_idx_RECTraj)->getInt(_idet_RECTraj,i);
       _path_DC[2] = _c12->getBank(_idx_RECTraj)->getFloat(_ipath_RECTraj,i);
       _x_DC[2] = _c12->getBank(_idx_RECTraj)->getFloat(_ix_RECTraj,i);
       _y_DC[2] = _c12->getBank(_idx_RECTraj)->getFloat(_iy_RECTraj,i);
       _z_DC[2] = _c12->getBank(_idx_RECTraj)->getFloat(_iz_RECTraj,i);
+      _edge[2] = _c12->getBank(_idx_RECTraj)->getFloat("edge", i);
     }
   }
   
@@ -210,14 +213,17 @@ bool HipoBankInterface::importDataToParticle(part &particle)
   particle.traj_x1 = _x_DC[0];
   particle.traj_y1 = _y_DC[0];
   particle.traj_z1 = _z_DC[0];
+  particle.edge_1 = _edge[0];
 
   particle.traj_x2 = _x_DC[1];
   particle.traj_y2 = _y_DC[1];
   particle.traj_z2 = _z_DC[1];
+  particle.edge_2 = _edge[1];
 
   particle.traj_x3 = _x_DC[2];
   particle.traj_y3 = _y_DC[2];
   particle.traj_z3 = _z_DC[2];
+  particle.edge_3 = _edge[2];
     
   particle.nphe_ltcc = _nphe_ltcc;
   particle.nphe_htcc = _nphe_htcc;
