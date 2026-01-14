@@ -121,11 +121,12 @@ int AsymmetryMLM(const char* file_name,
 int AsymmetryChi2(const char* file_name, 
     std::string fit_type, const char* config_file
     ){
-    // Placeholder for Chi2 fitting implementation
+    // Read config file
     TEnv env; 
     env.ReadFile(config_file, kEnvLocal);
     
     //Initialize and parse fitter
+    std::vector<double> phibn_edges = parse_csv_to_doubles(env.GetValue("phibn_edges", ""));
     std::vector<double> bn_edgs = parse_csv_to_doubles(env.GetValue("bn_edgs", ""));
     std::vector<double> obs2bn = parse_csv_to_doubles(env.GetValue("obs2bn", ""));
     std::string file_base = env.GetValue("file_base", "./out/pippi0_fall2018_in_pass2/");
@@ -135,19 +136,96 @@ int AsymmetryChi2(const char* file_name,
         env.GetValue("obs", "z"),
         env.GetValue("obs2", "cth"),
         (file_base + file_name).c_str(),
+        phibn_edges,
         bn_edgs,
         obs2bn,
         fit_type
     );
 
+    //Loop through obs2 bins and run Chi2 fitting based on the fit_type
+    for(size_t bn_idx = 0; bn_idx < fitter.OBS2BN.size() - 1; bn_idx++){
+        fitter.OUT_DIR = file_base + "BSA_Plots/" + fit_type + "/" + fitter.OBS2 + "_" + std::to_string(fitter.OBS2BN[bn_idx]).substr(0,5) + "_" + std::to_string(fitter.OBS2BN[bn_idx+1]).substr(0,5) + "/";
+        // Check if directory exists and create if needed
+        if (!std::filesystem::exists(fitter.OUT_DIR)) {
+            std::filesystem::create_directories(fitter.OUT_DIR);
+        }
+        //Make sure there is no SinFits.root file already existing in the output directory
+        std::string root_filename = fitter.OUT_DIR + "SinFits.root";
+        if (std::filesystem::exists(root_filename)) {
+            std::filesystem::remove(root_filename);
+        }
+        fitter.obs2_bin_idx = bn_idx;
+        // MhChi2 fit
+        if(fit_type == "MhChi2"){
+            fitter.RunMhChi2Fit(bn_idx);
+        }
+        
+        // MxChi2 fit
+        if(fit_type == "MxChi2"){
+            fitter.RunMxChi2Fit(bn_idx);
+        }
 
+        //Plot N_sig values to compare neg and pos helicity
+        fitter.PlotToCanvas_N_sig_BarHist();
+
+        //plot A_sig!!
+        fitter.MakeGraphLinePlot(fitter.A_sig, fitter.BN_CENTERS,
+            "F_{LU}^{sin#phi}/F_{UU} [arb. units]",
+            fitter.OBS.c_str(),
+            "A_sig",
+            kBlack);
+
+        //Plot N_sig extraction fits. One postage stamp plot per obs bin - first need to flatten arrays for easier plotting
+        for(size_t obs_bin_idx = 0; obs_bin_idx < fitter.BN_EDGS.size() -1; obs_bin_idx++){
+            std::vector<TH1F*> data_hists;
+            std::vector<TGraph*> total_graphs;
+            std::vector<TGraph*> sig_graphs;
+            std::vector<TGraph*> bkg_graphs;
+            std::vector<TLegend*> legends;
+            std::vector<TLatex*> texts;
+            std::vector<TPaveText*> param_boxes;
+            std::string title = "ExtractionFits_" + fitter.OBS + "(" + std::to_string(fitter.BN_EDGS[obs_bin_idx]).substr(0,5) + ", " + std::to_string(fitter.BN_EDGS[obs_bin_idx+1]).substr(0,5) + ")";
+
+            for(size_t phi_bin_idx = 0; phi_bin_idx < fitter.PHIBN_EDGES.size() -1; phi_bin_idx++){
+                data_hists.push_back(fitter.N_sig_fitting_datathist[obs_bin_idx][phi_bin_idx].first);
+                data_hists.push_back(fitter.N_sig_fitting_datathist[obs_bin_idx][phi_bin_idx].second);
+                total_graphs.push_back(fitter.N_sig_fitting_totalgraph[obs_bin_idx][phi_bin_idx].first);
+                total_graphs.push_back(fitter.N_sig_fitting_totalgraph[obs_bin_idx][phi_bin_idx].second);
+                sig_graphs.push_back(fitter.N_sig_fitting_siggraph[obs_bin_idx][phi_bin_idx].first);
+                sig_graphs.push_back(fitter.N_sig_fitting_siggraph[obs_bin_idx][phi_bin_idx].second);
+                bkg_graphs.push_back(fitter.N_sig_fitting_bkggraph[obs_bin_idx][phi_bin_idx].first);
+                bkg_graphs.push_back(fitter.N_sig_fitting_bkggraph[obs_bin_idx][phi_bin_idx].second);
+                legends.push_back(fitter.N_sig_fitting_legends[obs_bin_idx][phi_bin_idx].first);
+                legends.push_back(fitter.N_sig_fitting_legends[obs_bin_idx][phi_bin_idx].second);
+                texts.push_back(fitter.N_sig_fitting_texts[obs_bin_idx][phi_bin_idx].first);
+                texts.push_back(fitter.N_sig_fitting_texts[obs_bin_idx][phi_bin_idx].second);
+                param_boxes.push_back(fitter.N_sig_fitting_paramboxes[obs_bin_idx][phi_bin_idx].first);
+                param_boxes.push_back(fitter.N_sig_fitting_paramboxes[obs_bin_idx][phi_bin_idx].second);
+            }
+
+            fitter.PlotToCanvas_PostageStamp(data_hists,
+                                            total_graphs,
+                                            sig_graphs,
+                                            bkg_graphs,
+                                            legends,
+                                            texts,
+                                            param_boxes,
+                                            title);
+        
+        //clear results containers
+        fitter.N_sig_pos.clear(); 
+        fitter.N_sig_neg.clear(); 
+        fitter.alpha.clear();      
+        fitter.A_sig.clear();  
+        }
+    }
     return 0;
     }
 
 
 int AsymmetryFitting(const char* file_name = "nSidis_005032.root", 
-    std::string fit_type = "MhMLM", const char* config_file = "config/pippi0_RGAinbending_zbinning.txt"
-    ){
+    std::string fit_type = "MhChi2", const char* config_file = "config/pippi0_RGAinbending_zbinning.txt")
+    {
     
     if (fit_type.find("MLM") != std::string::npos) {
     // MLM fit type

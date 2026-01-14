@@ -599,7 +599,7 @@ void MLM_Fitter::PlotPurityGraph(RooDataSet& binned_data, RooRealVar& x,
 
 
 void MLM_Fitter::PlotToCanvas_PostageStamp(){
-  // Create postage stamp canvas with stored purity plots
+  // Create postage stamp canvas with stored plots
   int n_plots = purity_data_hists.size();
   if (n_plots == 0) return;
   
