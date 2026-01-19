@@ -101,6 +101,7 @@ void MLM_Fitter::RunMhFitMLM(int obs2bn_idx){
 
   // Clean up filtered tree and temp file
   tempFile->Close();
+  gSystem->Unlink(tempFile->GetName());
   delete tempFile;
   delete Mh_cut_sb;
   delete Mh_cut_b;
@@ -155,6 +156,7 @@ void MLM_Fitter::RunMxFitMLM(int obs2bn_idx){
 
   // Clean up filtered tree and temp file
   tempFile->Close();
+  gSystem->Unlink(tempFile->GetName());
   delete tempFile;
   delete Mx_cut_sb;
   delete Mx_cut_b;
@@ -220,6 +222,7 @@ std::vector<std::pair<double,double>> MLM_Fitter::FitMLM(TTree* tree,TCut* bound
 
   // Clean up final tree and temp file
   tempFile2->Close();
+  gSystem->Unlink(tempFile2->GetName());
   delete tempFile2;
   return results;
 
@@ -255,7 +258,6 @@ void MLM_Fitter::PurityCalc_Mh(TTree* tree){
   RooRealVar sigma("sigma_{sig}", "sigma", 0.06, 0.00001, 0.1);
   
   //Define fit parameters for background (Chebychev polynomial)
-  // Reduced to 2nd order and tighter constraints to prevent negative PDF values
   RooRealVar p1("p1", "p1", 0, -1, 1);
   RooRealVar p2("p2", "p2", 0, -1, 1);
   RooRealVar p3("p3", "p3", 0,-1,1);
@@ -525,6 +527,8 @@ void MLM_Fitter::PlotPurityGraph(RooDataSet& binned_data, RooRealVar& x,
   total_graph->SetLineStyle(kDashed);
   total_graph->SetLineColor(kBlack);
   total_graph->SetLineWidth(2);
+
+  double chi2NDF = CalculateChi2(data_hist, total_graph);
   
   TGraph* sig_graph = new TGraph(nPoints, xPoints, ySig);
   sig_graph->SetName(sig_graph_name.c_str());
@@ -558,7 +562,7 @@ void MLM_Fitter::PlotPurityGraph(RooDataSet& binned_data, RooRealVar& x,
   text->SetName(text_name.c_str());
   text->SetNDC(true);
   text->SetTextSize(0.06);
-  text->SetText(0.50, 0.45, Form("u = %.4f #pm %.4f", u, u_err));
+  text->SetText(0.50, 0.45, Form("#splitline{u = %.4f #pm %.4f}{#chi^{2}/NDF: %.2f}", u, u_err, chi2NDF));
 
   //param box
   std::string param_box_name = "param_box_" + idx_str;
@@ -595,6 +599,31 @@ void MLM_Fitter::PlotPurityGraph(RooDataSet& binned_data, RooRealVar& x,
 
     
   
+}
+
+double MLM_Fitter::CalculateChi2(TH1F* data_hist, TGraph* total_graph) {
+    double chi2 = 0.0;
+    int nBins = data_hist->GetNbinsX();
+    int ndf = 0;
+    
+    for (int i = 1; i <= nBins; i++) {
+        double x = data_hist->GetBinCenter(i);
+        double data = data_hist->GetBinContent(i);
+        double data_err = sqrt(data); // Poisson error
+        
+        if (data == 0) continue; // Skip empty bins
+        
+        // Evaluate the fit at this x position
+        double fit = total_graph->Eval(x);
+        
+        // Calculate chi2 contribution
+        chi2 += pow((data - fit) / data_err, 2);
+        ndf++;
+    }
+    
+    std::cout << "      Chi2 = " << chi2 << ", NDF = " << ndf << ", Chi2/NDF = " << chi2/ndf << std::endl;
+    
+    return chi2/ndf;
 }
 
 

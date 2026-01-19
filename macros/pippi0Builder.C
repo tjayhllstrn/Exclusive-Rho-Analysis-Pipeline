@@ -18,7 +18,8 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
     double truex, trueQ2, trueW;
     double tPol;
     int hel,run,A,_evnum,hwp,tSign,target;
-    int Nmax=100;
+    const int Nmax=100;
+    int Nmax_tree=100;
     int isMC=0;
     double px[Nmax], py[Nmax], pz[Nmax], E[Nmax], vz[Nmax], chi2[Nmax], theta[Nmax], eta[Nmax], phi[Nmax];
     double truepx[Nmax] , truepy[Nmax] , truepz[Nmax], trueE[Nmax], truetheta[Nmax], trueeta[Nmax], truephi[Nmax];
@@ -45,7 +46,7 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
     EventTree->SetBranchAddress("W",&W); 
     EventTree->SetBranchAddress("y",&y); 
     EventTree->SetBranchAddress("nu",&nu); 
-    EventTree->SetBranchAddress("Nmax",&Nmax);
+    EventTree->SetBranchAddress("Nmax",&Nmax_tree);
     EventTree->SetBranchAddress("px",px);
     EventTree->SetBranchAddress("py",py);
     EventTree->SetBranchAddress("pz",pz);
@@ -76,8 +77,8 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
     treename = "pippi0";
     //make a tree with the name pippi0
     TTree *outtree = new TTree(treename.Data(),"Tree");
-    double z, pT, phih, Mx, xF, xF1, xF2, Mh,eps,gamma, Mdiphoton, th,cth,exclusive,containsNeutron;
-    double z_true, pT_true, phih_true, Mx_true, xF_true, xF1_true, xF2_true, Mh_true, Mdiphoton_true, th_true,cth_true,t_elec;
+    double z, pT, phih, Mx, xF, xF1, xF2, Mh,eps,gamma, Mdiphoton, th,cth,exclusive,containsNeutron,px_neutron,py_neutron,pz_neutron;
+    double z_true, pT_true, phih_true, Mx_true, xF_true, xF1_true, xF2_true, Mh_true, Mdiphoton_true, th_true,cth_true,t_elec,px_neutron_true,py_neutron_true,pz_neutron_true;
     double MCtrue_containsNeutron,truepip_pid,truepho2_pid,truepho1_pid,trueelectron_pid,t_elec_true;
     double MCphoparent_samepi0,MCpippi0parent_samerho,truepipparent_pid,truepipparent_id,truepho2parentparent_pid,truepho2parentparent_id,truepho2parent_pid;
     double truepho2parent_id,truepho1parentparent_pid,truepho1parentparent_id,truepho1parent_pid,truepho1parent_id,MCtrue_exclusive;
@@ -146,6 +147,13 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
 
     outtree->Branch("MCtrue_exclusive",&MCtrue_exclusive,"MCtrue_exclusive/D");
     outtree->Branch("exclusive",&exclusive,"exclusive/D");
+
+    outtree->Branch("px_neutron",&px_neutron,"px_neutron/D");
+    outtree->Branch("py_neutron",&py_neutron,"py_neutron/D");
+    outtree->Branch("pz_neutron",&pz_neutron,"pz_neutron/D");
+    outtree->Branch("px_neutron_true",&px_neutron_true,"px_neutron_true/D");
+    outtree->Branch("py_neutron_true",&py_neutron_true,"py_neutron_true/D");
+    outtree->Branch("pz_neutron_true",&pz_neutron_true,"pz_neutron_true/D");
 
     
 
@@ -268,6 +276,14 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
         
                         Mx = (init_electron+init_target-electron-dihadron).M();
                         Mx_true = (init_electron+init_target-trueelectron-truedihadron).M();
+
+                        //find the projected 3 momentum of the missing mass particle (assuming there is one missing mass particle with mass 1GeV)
+                        px_neutron = (init_electron + init_target - dihadron - electron).Px();
+                        px_neutron_true = (init_electron + init_target - truedihadron - trueelectron).Px();
+                        py_neutron = (init_electron + init_target - dihadron - electron).Py();
+                        py_neutron_true = (init_electron + init_target - truedihadron - trueelectron).Py();
+                        pz_neutron = (init_electron + init_target - dihadron - electron).Pz();
+                        pz_neutron_true = (init_electron + init_target - truedihadron - trueelectron).Pz();
                         
                         //check for neutron in pid list. If there is a neutron, assume exclusive event, but check to see if there are other particles. If there are other particles, it is not an exclusive event. This means an "exclusive event" has a diphoton, a pip, and a neutron
                         MCtrue_containsNeutron = 0;

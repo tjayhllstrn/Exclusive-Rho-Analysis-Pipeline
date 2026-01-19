@@ -1,9 +1,9 @@
 treename pippi0
 out_base ./out/
 in_base ./out/
-obs z
+obs t_elec
 obs2 cth
 
-bn_edgs 0.66,0.74,0.79,0.82,0.85,0.88,0.91,0.93,0.96,1
+bn_edgs -2.9,-2.2,-1.8,-1.5,-1.2,-0.9,-0.7,-0.5,-0.3
 phibn_edges -3.14,-2.36,-1.57,-0.79,0,0.79,1.57,2.36,3.14
 obs2bn -1,1

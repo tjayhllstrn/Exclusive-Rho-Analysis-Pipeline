@@ -63,6 +63,7 @@ class MLM_Fitter {
                         RooFitResult* fit_results);
     void PlotPurityGraph(RooDataSet& binned_data, RooRealVar& x,
                         RooAbsPdf& sig, RooAbsPdf& background,RooRealVar& N_sig,RooRealVar& N_bkg,RooAddPdf& model_ext);
+    double CalculateChi2(TH1F* data_hist, TGraph* total_graph);
 
     //MLM Fit Functions
     void RunMhFitMLM(int obs2bn_idx);

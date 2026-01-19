@@ -9,6 +9,7 @@
 #include <sstream>
 #include <filesystem>
 
+
 // helper: parse a comma-separated string into doubles
 static std::vector<double> parse_csv_to_doubles(const std::string &s){
     std::vector<double> out;
@@ -24,7 +25,7 @@ static std::vector<double> parse_csv_to_doubles(const std::string &s){
     return out;
 }
 
-int AsymmetryMLM(const char* file_name, 
+int AsymmetryMLM(const char* file_name, const char* file_dir,
     std::string fit_type, const char* config_file
     ){
         // load configuration
@@ -34,13 +35,14 @@ int AsymmetryMLM(const char* file_name,
     //Initialize and parse fitter
     std::vector<double> bn_edgs = parse_csv_to_doubles(env.GetValue("bn_edgs", ""));
     std::vector<double> obs2bn = parse_csv_to_doubles(env.GetValue("obs2bn", ""));
-    std::string file_base = env.GetValue("file_base", "./out/pippi0_fall2018_in_pass2/");
+    std::string out_base = env.GetValue("out_base", "./out/");
+    std::string in_base = env.GetValue("in_base", "./out/");
     MLM_Fitter fitter(
         env.GetValue("treename", "pippi0"),
-        (file_base + "BSA_Plots/" + fit_type + "/").c_str(),
+        (out_base + file_dir + "BSA_Plots/" + env.GetValue("obs", "z") + "/" + fit_type + "/").c_str(),
         env.GetValue("obs", "z"),
         env.GetValue("obs2", "cth"),
-        (file_base + file_name).c_str(),
+        (in_base + file_dir + file_name).c_str(),
         bn_edgs,
         obs2bn,
         fit_type
@@ -49,7 +51,7 @@ int AsymmetryMLM(const char* file_name,
     //Loop through obs2 bins and run MLM fitting based on the fit_type
     for(size_t bn_idx = 0; bn_idx < fitter.OBS2BN.size() - 1; bn_idx++){
 
-        fitter.OUT_DIR = file_base + "BSA_Plots/" + fit_type + "/" + fitter.OBS2 + "_" + std::to_string(fitter.OBS2BN[bn_idx]).substr(0,5) + "_" + std::to_string(fitter.OBS2BN[bn_idx+1]).substr(0,5) + "/";
+        fitter.OUT_DIR = out_base + file_dir + "BSA_Plots/" + fitter.OBS + "/" + fit_type + "/" + fitter.OBS2 + "_" + std::to_string(fitter.OBS2BN[bn_idx]).substr(0,5) + "_" + std::to_string(fitter.OBS2BN[bn_idx+1]).substr(0,5) + "/";
         // Check if directory exists and create if needed
         if (!std::filesystem::exists(fitter.OUT_DIR)) {
             std::filesystem::create_directories(fitter.OUT_DIR);
@@ -118,7 +120,7 @@ int AsymmetryMLM(const char* file_name,
     return 0;
     }
 
-int AsymmetryChi2(const char* file_name, 
+int AsymmetryChi2(const char* file_name, const char* file_dir,
     std::string fit_type, const char* config_file
     ){
     // Read config file
@@ -129,13 +131,14 @@ int AsymmetryChi2(const char* file_name,
     std::vector<double> phibn_edges = parse_csv_to_doubles(env.GetValue("phibn_edges", ""));
     std::vector<double> bn_edgs = parse_csv_to_doubles(env.GetValue("bn_edgs", ""));
     std::vector<double> obs2bn = parse_csv_to_doubles(env.GetValue("obs2bn", ""));
-    std::string file_base = env.GetValue("file_base", "./out/pippi0_fall2018_in_pass2/");
+    std::string out_base = env.GetValue("out_base", "./out/");
+    std::string in_base = env.GetValue("in_base", "./out/");
     Chi2_Fitter fitter(
         env.GetValue("treename", "pippi0"),
-        (file_base + "BSA_Plots/" + fit_type + "/").c_str(),
+        (out_base + file_dir + "BSA_Plots/" + env.GetValue("obs", "z") + "/" + fit_type + "/").c_str(),
         env.GetValue("obs", "z"),
         env.GetValue("obs2", "cth"),
-        (file_base + file_name).c_str(),
+        (in_base + file_dir + file_name).c_str(),
         phibn_edges,
         bn_edgs,
         obs2bn,
@@ -144,7 +147,7 @@ int AsymmetryChi2(const char* file_name,
 
     //Loop through obs2 bins and run Chi2 fitting based on the fit_type
     for(size_t bn_idx = 0; bn_idx < fitter.OBS2BN.size() - 1; bn_idx++){
-        fitter.OUT_DIR = file_base + "BSA_Plots/" + fit_type + "/" + fitter.OBS2 + "_" + std::to_string(fitter.OBS2BN[bn_idx]).substr(0,5) + "_" + std::to_string(fitter.OBS2BN[bn_idx+1]).substr(0,5) + "/";
+        fitter.OUT_DIR = out_base + file_dir + "BSA_Plots/" + fitter.OBS + "/" + fit_type + "/" + fitter.OBS2 + "_" + std::to_string(fitter.OBS2BN[bn_idx]).substr(0,5) + "_" + std::to_string(fitter.OBS2BN[bn_idx+1]).substr(0,5) + "/";
         // Check if directory exists and create if needed
         if (!std::filesystem::exists(fitter.OUT_DIR)) {
             std::filesystem::create_directories(fitter.OUT_DIR);
@@ -183,6 +186,7 @@ int AsymmetryChi2(const char* file_name,
             std::vector<TGraph*> bkg_graphs;
             std::vector<TLegend*> legends;
             std::vector<TLatex*> texts;
+            std::vector<double> Chi2NDF;
             std::vector<TPaveText*> param_boxes;
             std::string title = "ExtractionFits_" + fitter.OBS + "(" + std::to_string(fitter.BN_EDGS[obs_bin_idx]).substr(0,5) + ", " + std::to_string(fitter.BN_EDGS[obs_bin_idx+1]).substr(0,5) + ")";
 
@@ -199,6 +203,8 @@ int AsymmetryChi2(const char* file_name,
                 legends.push_back(fitter.N_sig_fitting_legends[obs_bin_idx][phi_bin_idx].second);
                 texts.push_back(fitter.N_sig_fitting_texts[obs_bin_idx][phi_bin_idx].first);
                 texts.push_back(fitter.N_sig_fitting_texts[obs_bin_idx][phi_bin_idx].second);
+                Chi2NDF.push_back(fitter.Chi2_values[obs_bin_idx][phi_bin_idx].first);
+                Chi2NDF.push_back(fitter.Chi2_values[obs_bin_idx][phi_bin_idx].second);
                 param_boxes.push_back(fitter.N_sig_fitting_paramboxes[obs_bin_idx][phi_bin_idx].first);
                 param_boxes.push_back(fitter.N_sig_fitting_paramboxes[obs_bin_idx][phi_bin_idx].second);
             }
@@ -209,13 +215,14 @@ int AsymmetryChi2(const char* file_name,
                                             bkg_graphs,
                                             legends,
                                             texts,
+                                            Chi2NDF,
                                             param_boxes,
                                             title);
         
         //clear results containers
         fitter.N_sig_pos.clear(); 
         fitter.N_sig_neg.clear(); 
-        fitter.alpha.clear();      
+        fitter.A.clear();      
         fitter.A_sig.clear();  
         }
     }
@@ -223,17 +230,19 @@ int AsymmetryChi2(const char* file_name,
     }
 
 
-int AsymmetryFitting(const char* file_name = "nSidis_005032.root", 
+int AsymmetryFitting(const char* file_name = "nSidis_005036.root", const char* file_dir = "pippi0_fall2018_in_pass2/",
     std::string fit_type = "MhChi2", const char* config_file = "config/pippi0_RGAinbending_zbinning.txt")
     {
+    //usage: AsymmetryFitting(<input root file name> <input file immediate directory>, <fit type>, <config file>)
+    //ex: clas12root -l -b -q 'macrosAsymmetryFitting.cpp("pippi0_fall2018_in_pass2.root","pippi0_fall2018_in_pass2/","MhChi2","config/pippi0_RGAinbending_zbinning.txt")'
     
     if (fit_type.find("MLM") != std::string::npos) {
     // MLM fit type
-    return AsymmetryMLM(file_name, fit_type, config_file);
+    return AsymmetryMLM(file_name, file_dir, fit_type, config_file);
     }
 
     if (fit_type.find("Chi2") != std::string::npos) {
-    return AsymmetryChi2(file_name, fit_type, config_file);
+    return AsymmetryChi2(file_name, file_dir, fit_type, config_file);
     }
     
 

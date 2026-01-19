@@ -39,7 +39,7 @@ class Chi2_Fitter {
     //data structs for managing results
     std::vector<std::vector<std::pair<double, double>>> N_sig_pos; //vector indexed by [obs bin, phibin] holding pairs of (N_sig, N_sig_err)
     std::vector<std::vector<std::pair<double, double>>> N_sig_neg;
-    std::vector<std::vector<std::pair<double, double>>> alpha;
+    std::vector<std::vector<std::pair<double, double>>> A;
     std::vector<std::pair<double, double>> A_sig;
 
     //data structs for managing plots
@@ -49,6 +49,7 @@ class Chi2_Fitter {
     std::vector<std::vector<std::pair<TGraph*, TGraph*>>> N_sig_fitting_bkggraph;
     std::vector<std::vector<std::pair<TLegend*, TLegend*>>> N_sig_fitting_legends;
     std::vector<std::vector<std::pair<TLatex*, TLatex*>>> N_sig_fitting_texts;
+    std::vector<std::vector<std::pair<double, double>>> Chi2_values;
     std::vector<std::vector<std::pair<TPaveText*, TPaveText*>>> N_sig_fitting_paramboxes;
     TCanvas* SinCanvas;
 
@@ -59,20 +60,22 @@ class Chi2_Fitter {
     std::vector<std::vector<std::pair<double, double>>> FitChi2(TTree* filteredTree,TCut* neg_hel, int helicity);
     std::pair<double,double> Mh_sig_fit(TTree* filteredTree, TCut bin_cut, int helicity);
     std::pair<double,double> Mx_sig_fit(TTree* filteredTree, TCut bin_cut, int helicity);
-    void CalcAlpha(TTree* filteredTree, int obs_bin_idx, int phi_bin_idx);
-    void FitToSin(std::vector<double>& x_vals, std::vector<std::pair<double,double>>& y, int obs_bin_idx);
+    void CalcA(TTree* filteredTree, int obs_bin_idx, int phi_bin_idx);
+    void FitToSin(std::vector<double>& x_vals, std::vector<std::pair<double,double>>& y, int obs_bin_idx, TTree* filteredTree);
 
     //plotting methods
     void BinningSchemePlot(TTree* filteredTree);
     void PlotToCanvas_N_sig_BarHist();
     void PlotSigFitGraph(RooDataSet& binned_data, RooRealVar& x,
                                      RooAbsPdf& sig, RooAbsPdf& background,RooRealVar& N_sig,RooRealVar& N_bkg,RooAddPdf& model_ext, int helicity);
+    double CalculateChi2(TH1F* data_hist, TGraph* fit_graph);
     void PlotToCanvas_PostageStamp(std::vector<TH1F*>& data_hists,
                                             std::vector<TGraph*>& total_graphs,
                                             std::vector<TGraph*>& sig_graphs,
                                             std::vector<TGraph*>& bkg_graphs,
                                             std::vector<TLegend*>& legends,
                                             std::vector<TLatex*>& texts,
+                                            std::vector<double>& Chi2NDF,
                                             std::vector<TPaveText*>& param_boxes,
                                             std::string title);
     void MakeGraphLinePlot(std::vector<std::pair<double,double>>& y, std::vector<double>& x, 

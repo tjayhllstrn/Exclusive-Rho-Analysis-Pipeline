@@ -105,7 +105,7 @@ int hipo2tree_pippi0(const char* hipoFile = "",
         _cm.set_run(event_info.run); //sets relevant runinfo for the cutmanager class to use
 
         // QA cuts
-        if(qa->Pass(event_info.run,event_info.evnum)) {
+        if(!qa->Pass(event_info.run,event_info.evnum)) {
           badAsym++;
           continue;
         }
@@ -162,9 +162,12 @@ int hipo2tree_pippi0(const char* hipoFile = "",
 
     //Define the variables "m_g" , "m_ch" , "m_nh"
     //Should not be changed because the model was trained with this specific set of inputs
-    int m_g = 3;  // Number of neighboring gammas
-    int m_ch = 2; // Number of neighboring charged hadrons
-    int m_nh = 2; // Number of neighboring neutral hadrons
+    const int m_g = 3;  // Number of neighboring gammas
+    const int m_ch = 2; // Number of neighboring charged hadrons
+    const int m_nh = 2; // Number of neighboring neutral hadrons
+    int m_g_tree = 3; //make non-const variables of the same type to go into the tree...
+    int m_ch_tree = 2;
+    int m_nh_tree = 2;
 
     //Read the TFile
     TFile* f = new TFile(input_file, "UPDATE");
@@ -194,9 +197,9 @@ int hipo2tree_pippi0(const char* hipoFile = "",
     double num_photons_0_1, num_photons_0_2, num_photons_0_35;
 
     MLInput->Branch("photon_has_match", &photon_has_match, "photon_has_match/I");
-    MLInput->Branch("m_g", &m_g, "m_g/I");
-    MLInput->Branch("m_ch", &m_ch, "m_ch/I");
-    MLInput->Branch("m_nh", &m_nh, "m_nh/I");
+    MLInput->Branch("m_g", &m_g_tree, "m_g/I");
+    MLInput->Branch("m_ch", &m_ch_tree, "m_ch/I");
+    MLInput->Branch("m_nh", &m_nh_tree, "m_nh/I");
 
     MLInput->Branch("gE", &gE, "gE/D");
     MLInput->Branch("gEpcal", &gEpcal, "gEpcal/D");
