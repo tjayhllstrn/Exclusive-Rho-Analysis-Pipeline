@@ -9,6 +9,7 @@
 #include <sstream>
 #include <filesystem>
 
+//clas12root -l -b -q 'macros/AsymmetryFitting.cpp("pippi0_merged_in_pass2.root","pippi0_merged_in_pass2/","MhMLM","config/pippi0_RGAinbending_tbinning.txt")'
 
 // helper: parse a comma-separated string into doubles
 static std::vector<double> parse_csv_to_doubles(const std::string &s){

@@ -93,7 +93,7 @@ void Chi2_Fitter::RunMhChi2Fit(int obs2bn_idx){
     // Create temporary file for filtered trees to avoid memory issues
     std::cout << "  Creating pre-filtered tree..." << std::endl;
     std::string pid = std::to_string(getpid());
-    TFile* tempFile = new TFile(("/tmp/filtered_tree_temp_MhFitMLM_" + pid + ".root").c_str(), "RECREATE");
+    TFile* tempFile = new TFile(("/lustre24/expphy/volatile/clas12/users/tjhellst/filtered_tree_temp_MhFitMLM_" + pid + ".root").c_str(), "RECREATE");
     TTree* filteredTree = RAW_TREE->CopyTree(pre_cut.GetTitle());
     filteredTree->SetDirectory(tempFile); // Associate with temp file
 
@@ -158,7 +158,7 @@ void Chi2_Fitter::RunMxChi2Fit(int obs2bn_idx){
     // Create temporary file for filtered trees to avoid memory issues
     std::cout << "  Creating pre-filtered tree..." << std::endl;
     std::string pid = std::to_string(getpid());
-    TFile* tempFile = new TFile(("/tmp/filtered_tree_temp_MxFitMLM_" + pid + ".root").c_str(), "RECREATE");
+    TFile* tempFile = new TFile(("/lustre24/expphy/volatile/clas12/users/tjhellst/filtered_tree_temp_MxFitMLM_" + pid + ".root").c_str(), "RECREATE");
     TTree* filteredTree = RAW_TREE->CopyTree(pre_cut.GetTitle());
     filteredTree->SetDirectory(tempFile); // Associate with temp file
 
@@ -209,7 +209,7 @@ std::vector<std::vector<std::pair<double, double>>> Chi2_Fitter::FitChi2(TTree* 
 
     //make helicity cut
     std::string pid = std::to_string(getpid());
-    TFile* tempFile2 = new TFile(("/tmp/final_tree_temp_" + pid + ".root").c_str(), "RECREATE");
+    TFile* tempFile2 = new TFile(("/lustre24/expphy/volatile/clas12/users/tjhellst/final_tree_temp_" + pid + ".root").c_str(), "RECREATE");
     TTree* final_tree = filteredTree->CopyTree(hel_cut->GetTitle());
     final_tree->SetDirectory(tempFile2); // Associate with temp file
 

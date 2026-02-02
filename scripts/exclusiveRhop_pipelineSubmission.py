@@ -3,13 +3,11 @@ import subprocess
 from pathlib import Path
 
 # === USER CONFIGURATION ===
-input_dirs = [
-    Path("/lustre24/expphy/cache/clas12/rg-a/production/recon/spring2019/torus-1/pass2/dst/train/nSidis"),
-    Path("/lustre24/expphy/cache/clas12/rg-a/production/recon/fall2018/torus-1/pass2/main/train/nSidis"),
-]
+input_dirs = [Path("/lustre24/expphy/cache/clas12/rg-a/production/recon/fall2018/torus-1/pass2/main/train/nSidis"),Path("/lustre24/expphy/cache/clas12/rg-a/production/recon/spring2019/torus-1/pass2/dst/train/nSidis")]#,Path("/lustre24/expphy/cache/clas12/rg-a/production/montecarlo/clasdis_pass2/fa18_inb")
+input_file_base = 'nSidis_*.hipo' #corresponds with the file names that you want to run in input_dirs
 
 output_base = Path("/w/hallb-scshelf2102/clas12/users/tjhellst/Exclusive-Rho-Analysis-Pipeline/out")
-output_names = ["pippi0_spring2019_in_pass2","pippi0_fall2018_in_pass2"] # must correspond with the order of the entries in input_dirs
+output_names = ["pippi0_fall2018_in_pass2","pippi0_spring2019_in_pass2"] # must correspond with the order of the entries in input_dirs
 final_root_output_name = "pippi0_merged_in_pass2"
 
 config_file = "config/pippi0_RGAinbending_tbinning.txt"
@@ -18,28 +16,56 @@ dep_list = []  # Holds hadd job IDs for the final step
 
 fit_types = ["MhMLM","MxMLM","MhChi2","MxChi2"]
 
-def sbatch_submit(args,dry_run=False):
+def sbatch_submit(args,dry_run=True):
     """Run sbatch and return the job ID."""
     print(f"Submitting: {' '.join(args)}")
     
     if dry_run:
-        cmd_str = " ".join(args)
-        fake_job_id = str(abs(hash(cmd_str)) % 100000)  # fake unique id
-        print(f"  → Fake JobID: {fake_job_id}")
-        print("")
-        return fake_job_id
+        # Extract the script name and its arguments
+        script_idx = next(i for i, arg in enumerate(args) if arg.endswith('.sbatch'))
+        script_name = args[script_idx]
+        script_args = args[script_idx + 1:]  # Arguments after the script name
         
-    result = subprocess.run(args, capture_output=True, text=True, check=True)
-    # Typical sbatch output: "Submitted batch job 12345"
-    job_id = result.stdout.strip().split()[-1]
-    print(f"  → JobID: {job_id}")
-    return job_id
+        # Run the script directly with bash for testing
+        bash_cmd = ['bash', script_name] + script_args
+        print(f"  → Dry run: executing {' '.join(bash_cmd)}")
+        
+#        try:
+#            result = subprocess.run(bash_cmd, capture_output=True, text=True, check=True)
+#            print(f"  STDOUT:\n{result.stdout}")
+#            if result.stderr:
+#                print(f"  STDERR:\n{result.stderr}")
+#            
+            # Return fake job ID
+        fake_job_id = str(abs(hash(' '.join(args))) % 100000)
+        print(f"  → Fake JobID: {fake_job_id}\n")
+        return fake_job_id
+#        except subprocess.CalledProcessError as e:
+#            print(f"  ERROR: Script failed with exit code {e.returncode}")
+#            print(f"  STDOUT: {e.stdout}")
+#            print(f"  STDERR: {e.stderr}")
+#            raise
+    #when it is not a dry_run...
+    try:
+        result = subprocess.run(args, capture_output=True, text=True, check=True)
+        if result.stderr:
+            print(f"  STDERR: {result.stderr}")
+        
+        # Typical sbatch output: "Submitted batch job 12345"
+        job_id = result.stdout.strip().split()[-1]
+        print(f"  → JobID: {job_id}")
+        return job_id
+    except subprocess.CalledProcessError as e:
+        print(f"  ERROR: Command failed with exit code {e.returncode}")
+        print(f"  STDOUT: {e.stdout}")
+        print(f"  STDERR: {e.stderr}")
+        raise
 
 for i,input_dir in enumerate(input_dirs):
     tag = input_dir.name
     output_dir = output_base / output_names[i]
     output_dir.mkdir(parents=True, exist_ok=True)
-    n_files = len(list(input_dir.glob("nSidis_*")))
+    n_files = len(list(input_dir.glob(input_file_base)))
     if n_files == 0:
         print(f"No files found in {input_dir}, skipping…")
         continue
@@ -50,7 +76,7 @@ for i,input_dir in enumerate(input_dirs):
         "sbatch", 
         f"--array={array_spec}",
         "pipeline0_run_single_hipo.sbatch",
-        str(input_dir), str(output_dir)
+        str(input_dir), str(output_dir),input_file_base
     ]
     jid_convert = sbatch_submit(convert_args)
 

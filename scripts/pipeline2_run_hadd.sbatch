@@ -2,7 +2,7 @@
 #SBATCH --partition=production
 #SBATCH --account=clas12
 #SBATCH --mem=3500
-#SBATCH --time=4:00:00
+#SBATCH --time=5:00:00
 #SBATCH --output=/farm_out/%u/%x-%j-%N.out
 #SBATCH --error=/farm_out/%u/%x-%j-%N.err
 #SBATCH --job-name=pipeline2_hadd_merge

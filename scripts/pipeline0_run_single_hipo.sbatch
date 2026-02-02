@@ -13,16 +13,32 @@
 
 cd /w/hallb-scshelf2102/clas12/users/tjhellst/Exclusive-Rho-Analysis-Pipeline/
 source /u/home/tjhellst/.Exclusive-Rho-Analysis-Pipeline/bin/activate
-module load clas12root
 
 INPUT_DIR=$1
 OUTPUT_DIR=$2
-FILES=($INPUT_DIR/nSidis_*.hipo)
+INPUT_FILE_BASE=$3
+
+# Enable nullglob to get empty array if no matches (instead of literal pattern)
+shopt -s nullglob
+FILES=($INPUT_DIR/$INPUT_FILE_BASE) 
+shopt -u nullglob
+
+# Debug output
+echo "INPUT_DIR: $INPUT_DIR"
+echo "INPUT_FILE_BASE: $INPUT_FILE_BASE"
+echo "Pattern: $INPUT_DIR/$INPUT_FILE_BASE"
+echo "Number of files found: ${#FILES[@]}"
+echo "Task ID: $SLURM_ARRAY_TASK_ID"
+
+# Check if files were found
+if [ ${#FILES[@]} -eq 0 ]; then
+    echo "ERROR: No files matched pattern $INPUT_DIR/$INPUT_FILE_BASE"
+    exit 1
+fi
+
 
 TYPE=pippi0
 
 echo "Running job ${SLURM_ARRAY_TASK_ID[@]} on file: ${FILES[$SLURM_ARRAY_TASK_ID]}"
 
 ./scripts/run_single_hipo.rb --type $TYPE --input ${FILES[$SLURM_ARRAY_TASK_ID]} --outdir $OUTPUT_DIR -n -1
-
-ˇ

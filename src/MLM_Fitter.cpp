@@ -78,7 +78,7 @@ void MLM_Fitter::RunMhFitMLM(int obs2bn_idx){
   // Create temporary file for filtered trees to avoid memory issues
   std::cout << "  Creating pre-filtered tree..." << std::endl;
   std::string pid = std::to_string(getpid());
-  TFile* tempFile = new TFile(("/tmp/filtered_tree_temp_MhFitMLM_" + pid + ".root").c_str(), "RECREATE");
+  TFile* tempFile = new TFile(("/lustre24/expphy/volatile/clas12/users/tjhellst/filtered_tree_temp_MhFitMLM_" + pid + ".root").c_str(), "RECREATE");
   TTree* filteredTree = RAW_TREE->CopyTree(pre_cut.GetTitle());
   filteredTree->SetDirectory(tempFile); // Associate with temp file
   
@@ -98,11 +98,12 @@ void MLM_Fitter::RunMhFitMLM(int obs2bn_idx){
 
 
 
-
   // Clean up filtered tree and temp file
+  delete filteredTree;  // Delete the tree first
+  std::string tempFileName = tempFile->GetName();  // Save filename before closing
   tempFile->Close();
-  gSystem->Unlink(tempFile->GetName());
   delete tempFile;
+  gSystem->Unlink(tempFileName.c_str());  // Delete the file from disk
   delete Mh_cut_sb;
   delete Mh_cut_b;
 }
@@ -136,7 +137,7 @@ void MLM_Fitter::RunMxFitMLM(int obs2bn_idx){
   // Create temporary file for filtered trees to avoid memory issues
   std::cout << "  Creating pre-filtered tree..." << std::endl;
   std::string pid = std::to_string(getpid());
-  TFile* tempFile = new TFile(("/tmp/filtered_tree_temp_MxFitMLM_" + pid + ".root").c_str(), "RECREATE");
+  TFile* tempFile = new TFile(("/lustre24/expphy/volatile/clas12/users/tjhellst/filtered_tree_temp_MxFitMLM_" + pid + ".root").c_str(), "RECREATE");
   TTree* filteredTree = RAW_TREE->CopyTree(pre_cut.GetTitle());
   filteredTree->SetDirectory(tempFile); // Associate with temp file
   
@@ -155,9 +156,11 @@ void MLM_Fitter::RunMxFitMLM(int obs2bn_idx){
   Calc_A_sig_from_A_sigbkg(obs2bn_idx);
 
   // Clean up filtered tree and temp file
+  delete filteredTree;  // Delete the tree first
+  std::string tempFileName = tempFile->GetName();  // Save filename before closing
   tempFile->Close();
-  gSystem->Unlink(tempFile->GetName());
   delete tempFile;
+  gSystem->Unlink(tempFileName.c_str());  // Delete the file from disk
   delete Mx_cut_sb;
   delete Mx_cut_b;
 }
@@ -187,7 +190,7 @@ std::vector<std::pair<double,double>> MLM_Fitter::FitMLM(TTree* tree,TCut* bound
   //now loop over observeable and calculate A for each bin.
   std::vector<std::pair<double,double>> results;
   std::string pid = std::to_string(getpid());
-  TFile* tempFile2 = new TFile(("/tmp/final_tree_temp_" + pid + ".root").c_str(), "RECREATE");
+  TFile* tempFile2 = new TFile(("/lustre24/expphy/volatile/clas12/users/tjhellst/final_tree_temp_" + pid + ".root").c_str(), "RECREATE");
   TTree* final_tree = tree->CopyTree(bounds->GetTitle());
   final_tree->SetDirectory(tempFile2); // Associate with temp file
   for(int i=0;i<BN_EDGS.size()-1;i++){
@@ -221,9 +224,11 @@ std::vector<std::pair<double,double>> MLM_Fitter::FitMLM(TTree* tree,TCut* bound
   }
 
   // Clean up final tree and temp file
+  delete final_tree;  // Delete the tree first
+  std::string tempFileName = tempFile2->GetName();  // Save filename before closing
   tempFile2->Close();
-  gSystem->Unlink(tempFile2->GetName());
   delete tempFile2;
+  gSystem->Unlink(tempFileName.c_str());  // Delete the file from disk
   return results;
 
 }

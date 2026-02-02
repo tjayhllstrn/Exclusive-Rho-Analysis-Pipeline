@@ -2,8 +2,8 @@
 #include "../src/Kinematics.C"
 #include "../src/TreeManager.C"
 
-//clas12root -l -b -q 'macros/pippi0Builder.C("out/pippi0_fall2018_in_pass2/nSidis_005032.root")'
-//clas12root -l -b -q 'macros/pippi0Builder.C("out/pippi0_fall2018_in_pass2/nSidis_005036.root")'
+//clas12root -l -b -q 'macros/pippi0Builder.C("out/pippi0_spring2019_in_pass2_pipP_lt_1_25/nSidis_006618.root")'
+//clas12root -l -b -q 'macros/pippi0Builder.C("out/pippi0_MC_in_50nA/clasdis_rga_fa18_inb_50nA_10604MeV-0208.root")'
 //clas12root -l -b -q 'macros/pippi0Builder.C("out/MC_pippi0_fall2018_in_pass2/clasdis_rga_fa18_inb_45nA_10604MeV-0001.root")'
 
 int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
@@ -24,7 +24,7 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
     double px[Nmax], py[Nmax], pz[Nmax], E[Nmax], vz[Nmax], chi2[Nmax], theta[Nmax], eta[Nmax], phi[Nmax];
     double truepx[Nmax] , truepy[Nmax] , truepz[Nmax], trueE[Nmax], truetheta[Nmax], trueeta[Nmax], truephi[Nmax];
     int trueparentid[Nmax],trueparentpid[Nmax],trueparentparentid[Nmax],trueparentparentpid[Nmax];
-    int sector[Nmax];
+    int sector[Nmax], pcal_sector[Nmax], ecin_sector[Nmax], ecout_sector[Nmax];
     int pid[Nmax], truepid[Nmax];
     double p_gamma[Nmax];
     
@@ -55,6 +55,9 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
     EventTree->SetBranchAddress("vz",vz);
     EventTree->SetBranchAddress("chi2",chi2);
     EventTree->SetBranchAddress("pid",pid);
+    EventTree->SetBranchAddress("pcal_sector",pcal_sector);
+    EventTree->SetBranchAddress("ecin_sector",ecin_sector);
+    EventTree->SetBranchAddress("ecout_sector",ecout_sector);
     EventTree->SetBranchAddress("theta",theta);
     EventTree->SetBranchAddress("eta",eta);
     EventTree->SetBranchAddress("phi",phi);
@@ -77,13 +80,14 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
     treename = "pippi0";
     //make a tree with the name pippi0
     TTree *outtree = new TTree(treename.Data(),"Tree");
-    double z, pT, phih, Mx, xF, xF1, xF2, Mh,eps,gamma, Mdiphoton, th,cth,exclusive,containsNeutron,px_neutron,py_neutron,pz_neutron;
-    double z_true, pT_true, phih_true, Mx_true, xF_true, xF1_true, xF2_true, Mh_true, Mdiphoton_true, th_true,cth_true,t_elec,px_neutron_true,py_neutron_true,pz_neutron_true;
-    double MCtrue_containsNeutron,truepip_pid,truepho2_pid,truepho1_pid,trueelectron_pid,t_elec_true;
+    double z, pT, phih, Mx, xF, xF1, xF2, Mh,eps,gamma, Mdiphoton, th,cth,px_neutron,py_neutron,pz_neutron,sector_neutron,neutralhit_in_sector_neutron,pip_P;
+    double z_true, pT_true, phih_true, Mx_true, xF_true, xF1_true, xF2_true, Mh_true, Mdiphoton_true, th_true,cth_true,t_elec,px_neutron_true,py_neutron_true,pz_neutron_true,sector_neutron_true,pip_P_true;
+    double truepip_pid,truepho2_pid,truepho1_pid,trueelectron_pid,t_elec_true;
     double MCphoparent_samepi0,MCpippi0parent_samerho,truepipparent_pid,truepipparent_id,truepho2parentparent_pid,truepho2parentparent_id,truepho2parent_pid;
-    double truepho2parent_id,truepho1parentparent_pid,truepho1parentparent_id,truepho1parent_pid,truepho1parent_id,MCtrue_exclusive;
+    double truepho2parent_id,truepho1parentparent_pid,truepho1parentparent_id,truepho1parent_pid,truepho1parent_id;
     Mh=0;
     Mh_true=0;
+    neutralhit_in_sector_neutron=0;
     // Branching kinematic variables for the electron
     outtree->Branch("hel",&hel,"hel/I");
     outtree->Branch("run",&run,"run/I");
@@ -122,8 +126,8 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
     outtree->Branch("cth", &cth, "cth/D");
     outtree->Branch("cth_true", &cth_true, "cth_true/D");
 
-    outtree->Branch("containsNeutron",&containsNeutron,"containsNeutron/D");
-    outtree->Branch("MCtrue_containsNeutron",&MCtrue_containsNeutron,"MCtrue_containsNeutron/D");
+    outtree->Branch("pip_P", &pip_P, "pip_P/D");
+    outtree->Branch("pip_P_true", &pip_P_true, "pip_P_true/D");
     outtree->Branch("truepho1_pid",&truepho1_pid,"truepho1_pid/D");
     outtree->Branch("truepho2_pid",&truepho2_pid,"truepho2_pid/D");
     outtree->Branch("truepip_pid",&truepip_pid,"truepip_pid/D");
@@ -145,15 +149,26 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
     outtree->Branch("t_elec",&t_elec,"t_elec/D");
     outtree->Branch("t_elec_true",&t_elec_true,"t_elec_true/D");
 
-    outtree->Branch("MCtrue_exclusive",&MCtrue_exclusive,"MCtrue_exclusive/D");
-    outtree->Branch("exclusive",&exclusive,"exclusive/D");
-
     outtree->Branch("px_neutron",&px_neutron,"px_neutron/D");
     outtree->Branch("py_neutron",&py_neutron,"py_neutron/D");
     outtree->Branch("pz_neutron",&pz_neutron,"pz_neutron/D");
+    outtree->Branch("sector_neutron",&sector_neutron,"sector_neutron/D");
+    outtree->Branch("neutralhit_in_sector_neutron",&neutralhit_in_sector_neutron,"neutralhit_in_sector_neutron/D");
+    
     outtree->Branch("px_neutron_true",&px_neutron_true,"px_neutron_true/D");
     outtree->Branch("py_neutron_true",&py_neutron_true,"py_neutron_true/D");
     outtree->Branch("pz_neutron_true",&pz_neutron_true,"pz_neutron_true/D");
+    outtree->Branch("sector_neutron_true",&sector_neutron_true,"sector_neutron_true/D");
+
+    //for leftover particles in the event:
+    const int Nmax_leftover = 96;  // 100 - 4 particles you use
+    int Nleftover;
+    int pid_leftover[Nmax_leftover];
+    int truepid_leftover[Nmax_leftover];
+    outtree->Branch("Nleftover", &Nleftover, "Nleftover/I");
+    outtree->Branch("pid_leftover", pid_leftover, "pid_leftover[Nleftover]/I");
+    outtree->Branch("truepid_leftover", truepid_leftover, "truepid_leftover[Nleftover]/I");
+
 
     
 
@@ -284,30 +299,44 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
                         py_neutron_true = (init_electron + init_target - truedihadron - trueelectron).Py();
                         pz_neutron = (init_electron + init_target - dihadron - electron).Pz();
                         pz_neutron_true = (init_electron + init_target - truedihadron - trueelectron).Pz();
-                        
-                        //check for neutron in pid list. If there is a neutron, assume exclusive event, but check to see if there are other particles. If there are other particles, it is not an exclusive event. This means an "exclusive event" has a diphoton, a pip, and a neutron
-                        MCtrue_containsNeutron = 0;
-                        MCtrue_exclusive = 0;
-                        for(int m = 0; m<Nmax;m++){
-                            if(truepid[m]!=2112)continue;
-                            MCtrue_containsNeutron = 1;
-                            MCtrue_exclusive = 1;
-                            for(int n=0; n<Nmax;n++){
-                                if(truepid[n]==-999&&n==m&&n==l&&n==j&&n==k)continue;
-                                MCtrue_exclusive = 0;
+                        //calculate which sector a neutral particle with this momentum would hit in the CLAS12 EC - based on sector divisions for DC middle layer
+                        double phi = 180/PI *kin.phi(px_neutron,py_neutron);
+                        if(phi<30 && phi>=-30){sector_neutron = 1;}
+                        else if(phi<90 && phi>=30){sector_neutron = 2;}
+                        else if(phi<150 && phi>=90){sector_neutron = 3;}
+                        else if(phi>=150 || phi<-150){sector_neutron = 4;}
+                        else if(phi<-90 && phi>=-150){sector_neutron = 5;}
+                        else if(phi<-30 && phi>-90){sector_neutron = 6;}
+
+                        double phi_true = 180/PI *kin.phi(px_neutron_true,py_neutron_true);
+                        if(phi_true<30 && phi_true>=-30){sector_neutron_true = 1;}
+                        else if(phi_true<90 && phi_true>=30){sector_neutron_true = 2;}
+                        else if(phi_true<150 && phi_true>=90){sector_neutron_true = 3;}
+                        else if(phi_true>=150 || phi_true<-150){sector_neutron_true = 4;}
+                        else if(phi_true<-90 && phi_true>=-150){sector_neutron_true = 5;}
+                        else if(phi_true<-30 && phi_true>-90){sector_neutron_true = 6;}
+
+                        //determine if this sector has a neutral particle hit
+                        for (int m=0;m<Nmax;m++){
+                            if(pcal_sector[m]!=sector_neutron || ecin_sector[m]!=sector_neutron || ecout_sector[m]!=sector_neutron || m==j || m==k )continue;
+                            if(pid[m]==22||pid[m]==2112){
+                                neutralhit_in_sector_neutron = 1;
                             }
                         }
-
-                        containsNeutron = 0;
-                        exclusive = 0;
-                        for(int m = 0; m<Nmax;m++){
-                            if(pid[m]!=2112)continue;
-                            containsNeutron = 1;
-                            exclusive = 1;
-                            for(int n=0; n<Nmax;n++){
-                                if(pid[n]==-999&&n==m&&n==l&&n==j&&n==k)continue;
-                                exclusive = 0;
-                            }
+                        
+                        //build leftover particle list:
+                        Nleftover = 0;
+                        for(int m = 0; m < Nmax_tree; m++) {
+                            // Skip the particles you already used
+                            if(m == idx_e || m == j || m == k || m == l) continue;
+                            
+                            // Skip invalid particles
+                            if(pid[m] == -999) continue;
+                            
+                            // Add to leftover array
+                            pid_leftover[Nleftover] = pid[m];
+                            truepid_leftover[Nleftover] = truepid[m];
+                            Nleftover++;
                         }
                         
                         
@@ -334,6 +363,9 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
 
                         t_elec = kin.t_lep(electron,init_electron,dihadron);
                         t_elec_true = kin.t_lep(trueelectron,init_electron,truedihadron);
+
+                        pip_P = pip.P();
+                        pip_P_true = truepip.P();
         
                         if(!(electron.E()>0&&xF1>0&&xF2>0&&p_gamma[j]>0.78&&p_gamma[k]>0.78)){ 
                             if (p_gamma[j]>0.78||p_gamma[k]>0.78){

@@ -53,6 +53,7 @@ int hipo2tree_pippi0(const char* hipoFile = "",
     if (hipoFilePath.find("montecarlo")!=std::string::npos){
         hipo_is_mc = true;
     }
+
     //configure qa events to pass (based on ex https://github.com/JeffersonLab/clas12-qadb/blob/main/srcC/tests/testOkForAsymmetry.cpp)
     QADB * qa = new QADB("pass2");
     qa->CheckForDefect("TotalOutlier");     // these choices match the criteria of `OkForAsymmetry`
@@ -61,13 +62,13 @@ int hipo2tree_pippi0(const char* hipoFile = "",
     qa->CheckForDefect("SectorLoss");
     qa->CheckForDefect("Misc");
     for(int run : { // list of runs with `Misc` defect that are allowed by `OkForAsymmetry`
-      5046, 5047, 5051, 5128, 5129, 5130, 5158, 5159,
-      5160, 5163, 5165, 5166, 5167, 5168, 5169, 5180,
-      5181, 5182, 5183, 5400, 5448, 5495, 5496, 5505,
-      5567, 5610, 5617, 5621, 5623, 6736, 6737, 6738,
-      6739, 6740, 6741, 6742, 6743, 6744, 6746, 6747,
-      6748, 6749, 6750, 6751, 6753, 6754, 6755, 6756,
-      6757})
+    5046, 5047, 5051, 5128, 5129, 5130, 5158, 5159,
+    5160, 5163, 5165, 5166, 5167, 5168, 5169, 5180,
+    5181, 5182, 5183, 5400, 5448, 5495, 5496, 5505,
+    5567, 5610, 5617, 5621, 5623, 6736, 6737, 6738,
+    6739, 6740, 6741, 6742, 6743, 6744, 6746, 6747,
+    6748, 6749, 6750, 6751, 6753, 6754, 6755, 6756,
+    6757})
     qa->AllowMiscBit(run);
 
     // Add Analysis Objects
@@ -105,10 +106,12 @@ int hipo2tree_pippi0(const char* hipoFile = "",
         _cm.set_run(event_info.run); //sets relevant runinfo for the cutmanager class to use
 
         // QA cuts
-        if(!qa->Pass(event_info.run,event_info.evnum)) {
-          badAsym++;
-          continue;
-        }
+        if(doQADB){
+            if(!qa->Pass(event_info.run,event_info.evnum)) {
+            badAsym++;
+            continue;
+            }
+        } 
         // event_info.hel *= qa->CorrectHelicitySign(event_info.run,event_info.evnum);  //would take the place of ln36-37 in CLAS12Ana.C if it worked...
 
         //Now perform cuts

@@ -8,7 +8,7 @@
 #SBATCH --output=/farm_out/%u/%x-%j-%N.out
 #SBATCH --error=/farm_out/%u/%x-%j-%N.err
 #SBATCH --job-name=pipeline3_AsymFit
-#SBATCH --time=2:00:00
+#SBATCH --time=5:00:00
 
 FILE_NAME=$1
 FILE_DIR=$2
