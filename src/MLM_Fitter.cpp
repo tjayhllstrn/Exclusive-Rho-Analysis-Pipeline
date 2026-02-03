@@ -384,20 +384,20 @@ void MLM_Fitter::PurityCalc_Mx(TTree* tree){
   
   std::cout << "Calculating Purity from Mx distribution..." << std::endl;
   double lb = 0.6; //fitting bounds
-  double ub = 1.7;
+  double ub = 1.3;
 
   //Create RooRealVar for Mx fitting 
   RooRealVar Mx("Mx", "Mx", lb, ub);
   RooRealVar obs(OBS.c_str(), OBS.c_str(), BN_EDGS.front(), BN_EDGS.back());
   
   //Define fit parameters for signal (Gaussian)
-  RooRealVar mu_sig("m_{sig}", "mu", 0.94, 0.85, 1.2);
+  RooRealVar mu_sig("m_{sig}", "mu", 0.94, 0.85, 1.05);
   RooRealVar sigma_sig("sigma_{sig}", "sigma", 0.06, 0.01, 0.13);
   
-  //Define fit parameters for background (Gaussian)
-  // Reduced to 2nd order and tighter constraints to prevent negative PDF values
-   RooRealVar mu_bkg("mu_{bkg}", "mu", 2, 1.2, 3);
-   RooRealVar sigma_bkg("#sigma_{bkg}", "sigma", 0.06, 0.01, 0.4);
+  //Define fit parameters for background (Chebychev polynomial)
+  RooRealVar p1("p1", "p1", 0, -2, 2);
+  RooRealVar p2("p2", "p2", 0, -2, 2);
+  RooRealVar p3("p3", "p3", 0,-2,2);
 
   //Create extended PDF parameters
   int nEntries = tree->GetEntries() /  BN_CENTERS.size(); //approximate number of entries per obs bin
@@ -406,11 +406,11 @@ void MLM_Fitter::PurityCalc_Mx(TTree* tree){
   
   //Create signal PDF (Gaussian)
   std::string sig_name = "sig" + std::to_string(bn_idx);
-  RooGaussian sig(sig_name.c_str(), "gaussian Fit", Mx, mu_sig, sigma_sig);
+  RooGaussian sig(sig_name.c_str(), "Signal", Mx, mu_sig, sigma_sig);
   
-  //Create background PDF (Gaussian)
+  //Create background PDF (Chebychev polynomial)
   std::string bkg_name = "background" + std::to_string(bn_idx);
-  RooGaussian background(bkg_name.c_str(), "Gaussian Background", Mx, mu_bkg, sigma_bkg);
+  RooChebychev background(bkg_name.c_str(), "Background", Mx, RooArgList(p1, p2, p3));
   
   //Combine signal and background into extended model
   RooArgList components(sig, background);

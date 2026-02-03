@@ -9,7 +9,7 @@
 #include <sstream>
 #include <filesystem>
 
-//clas12root -l -b -q 'macros/AsymmetryFitting.cpp("pippi0_merged_in_pass2.root","pippi0_merged_in_pass2/","MhMLM","config/pippi0_RGAinbending_tbinning.txt")'
+//clas12root -l -b -q 'macros/AsymmetryFitting.cpp("pippi0_merged_in_pass2.root","pippi0_merged_in_pass2/","MhMLM","config/pippi0_RGAinbending_tbinning.txt",false)'
 
 // helper: parse a comma-separated string into doubles
 static std::vector<double> parse_csv_to_doubles(const std::string &s){
@@ -27,7 +27,8 @@ static std::vector<double> parse_csv_to_doubles(const std::string &s){
 }
 
 int AsymmetryMLM(const char* file_name, const char* file_dir,
-    std::string fit_type, const char* config_file
+    std::string fit_type, const char* config_file,
+    bool rewrite_cache = true
     ){
         // load configuration
     TEnv env; 
@@ -46,7 +47,8 @@ int AsymmetryMLM(const char* file_name, const char* file_dir,
         (in_base + file_dir + file_name).c_str(),
         bn_edgs,
         obs2bn,
-        fit_type
+        fit_type,
+        rewrite_cache
     );
     
     //Loop through obs2 bins and run MLM fitting based on the fit_type
@@ -122,7 +124,8 @@ int AsymmetryMLM(const char* file_name, const char* file_dir,
     }
 
 int AsymmetryChi2(const char* file_name, const char* file_dir,
-    std::string fit_type, const char* config_file
+    std::string fit_type, const char* config_file,
+    bool rewrite_cache = true
     ){
     // Read config file
     TEnv env; 
@@ -143,7 +146,8 @@ int AsymmetryChi2(const char* file_name, const char* file_dir,
         phibn_edges,
         bn_edgs,
         obs2bn,
-        fit_type
+        fit_type,
+        rewrite_cache
     );
 
     //Loop through obs2 bins and run Chi2 fitting based on the fit_type
@@ -232,18 +236,19 @@ int AsymmetryChi2(const char* file_name, const char* file_dir,
 
 
 int AsymmetryFitting(const char* file_name = "nSidis_005036.root", const char* file_dir = "pippi0_fall2018_in_pass2/",
-    std::string fit_type = "MhChi2", const char* config_file = "config/pippi0_RGAinbending_zbinning.txt")
+    std::string fit_type = "MhChi2", const char* config_file = "config/pippi0_RGAinbending_zbinning.txt",
+    bool rewrite_cache = true)
     {
-    //usage: AsymmetryFitting(<input root file name> <input file immediate directory>, <fit type>, <config file>)
-    //ex: clas12root -l -b -q 'macrosAsymmetryFitting.cpp("pippi0_fall2018_in_pass2.root","pippi0_fall2018_in_pass2/","MhChi2","config/pippi0_RGAinbending_zbinning.txt")'
+    //usage: AsymmetryFitting(<input root file name> <input file immediate directory>, <fit type>, <config file>, <rewrite_cache>)
+    //ex: clas12root -l -b -q 'macrosAsymmetryFitting.cpp("pippi0_fall2018_in_pass2.root","pippi0_fall2018_in_pass2/","MhChi2","config/pippi0_RGAinbending_zbinning.txt",false)'
     
     if (fit_type.find("MLM") != std::string::npos) {
     // MLM fit type
-    return AsymmetryMLM(file_name, file_dir, fit_type, config_file);
+    return AsymmetryMLM(file_name, file_dir, fit_type, config_file, rewrite_cache);
     }
 
     if (fit_type.find("Chi2") != std::string::npos) {
-    return AsymmetryChi2(file_name, file_dir, fit_type, config_file);
+    return AsymmetryChi2(file_name, file_dir, fit_type, config_file, rewrite_cache);
     }
     
 

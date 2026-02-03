@@ -359,8 +359,10 @@ std::pair<double,double> Chi2_Fitter::Mx_sig_fit(TTree* binnedTree, TCut bin_cut
     RooRealVar Mx("Mx", "Mx", 0.6, 1.7); 
     RooRealVar mu_sig("mu_{sig}", "mu", 0.94, 0.85, 1.2);
     RooRealVar sigma_sig("#sigma_{sig}", "sigma", 0.06, 0.01, 0.13);
-    RooRealVar mu_bkg("mu_{bkg}", "mu", 2, 1.2, 3);
-    RooRealVar sigma_bkg("#sigma_{bkg}", "sigma", 0.06, 0.01, 0.4);
+    //Define fit parameters for background (Chebychev polynomial)
+    RooRealVar p1("p1", "p1", 0, -2, 2);
+    RooRealVar p2("p2", "p2", 0, -2, 2);
+    RooRealVar p3("p3", "p3", 0,-2,2);
     
     int nEntries = binnedTree->GetEntries() /  BN_CENTERS.size(); //approximate number of entries per obs bin
     RooRealVar N_sig("N_{sig}", "N_sig", nEntries*0.7, 100, nEntries*1.2);
@@ -370,8 +372,8 @@ std::pair<double,double> Chi2_Fitter::Mx_sig_fit(TTree* binnedTree, TCut bin_cut
     RooRealVar phi("phi", "phi", -3.14, 3.14);
     
     //Define Roo Fitting Models
-    RooGaussian sig("sig", "gaussian Fit", Mx, mu_sig, sigma_sig);
-    RooGaussian background("background", "Background", Mx, mu_bkg,sigma_bkg);
+    RooGaussian sig("sig", "Signal", Mx, mu_sig, sigma_sig);
+    RooChebychev background("background", "Background", Mx, RooArgList(p1, p2, p3));
     RooAddPdf model_ext("model_ext", "Signal + Background", RooArgList(sig, background), RooArgList(N_sig, N_bkg));
 
     //Create Data Set for this bin
