@@ -12,7 +12,8 @@ Chi2_Fitter::Chi2_Fitter(const char* treename, const char* out_dir,
                 std::vector<double> phibn_edges,
                 std::vector<double> bn_edgs,
                 std::vector<double> obs2bn,
-                std::string fit_type)
+                std::string fit_type,
+                bool rewrite_cache)
     : TREENAME(treename),
     OUT_DIR(out_dir),
     OBS(obs_s),
@@ -21,7 +22,9 @@ Chi2_Fitter::Chi2_Fitter(const char* treename, const char* out_dir,
     PHIBN_EDGES(phibn_edges),
     BN_EDGS(bn_edgs),
     OBS2BN(obs2bn),
-    FIT_TYPE(fit_type)
+    FIT_TYPE(fit_type),
+    REWRITE_CACHE(rewrite_cache),
+    CACHE_DIR("/lustre24/expphy/volatile/clas12/users/tjhellst/cache")
     {
         // suppress RooFit messages
         RooMsgService* rms = &RooMsgService::instance();
@@ -35,6 +38,10 @@ Chi2_Fitter::Chi2_Fitter(const char* treename, const char* out_dir,
             throw std::runtime_error("Error: could not open ROOT file: " + std::string(in_file));
         }
         RAW_TREE = (TTree*)file->Get(treename);
+
+        // Create cache directory if it doesn't exist
+        gSystem->mkdir(CACHE_DIR.c_str(), true);
+        std::cout << "Cache directory: " << CACHE_DIR << " (rewrite_cache=" << REWRITE_CACHE << ")" << std::endl;
 
         //populate the BN_CENTERS vector for later plotting
         BN_CENTERS.reserve(bn_edgs.size() - 1);
@@ -76,6 +83,7 @@ Chi2_Fitter::~Chi2_Fitter(){
     }
 }
 
+
 void Chi2_Fitter::RunMhChi2Fit(int obs2bn_idx){
     using namespace RooFit;
     std::cout<<"\033[0;32mRunning Mh chi2 phibinning Fit\033[0m\n"<<std::endl;
@@ -90,12 +98,33 @@ void Chi2_Fitter::RunMhChi2Fit(int obs2bn_idx){
     TCut obs2_cut = TCut((OBS2 + ">" + std::to_string(OBS2BN[obs2bn_idx]) + " && " + OBS2 + "<" + std::to_string(OBS2BN[obs2bn_idx+1])).c_str());
     TCut pre_cut = Diphoton_cut && Mx_cut && obs2_cut;
 
-    // Create temporary file for filtered trees to avoid memory issues
-    std::cout << "  Creating pre-filtered tree..." << std::endl;
-    std::string pid = std::to_string(getpid());
-    TFile* tempFile = new TFile(("/lustre24/expphy/volatile/clas12/users/tjhellst/filtered_tree_temp_MhFitMLM_" + pid + ".root").c_str(), "RECREATE");
-    TTree* filteredTree = RAW_TREE->CopyTree(pre_cut.GetTitle());
-    filteredTree->SetDirectory(tempFile); // Associate with temp file
+    // Create or open cached filtered tree
+    std::cout << "  Creating/loading pre-filtered tree..." << std::endl;
+    
+    // Generate unique filename based on input file, fit_type and obs2 bin
+    std::string base_filename = GetBaseFilename(IN_FILE);
+    std::string cache_filename = CACHE_DIR + "/filtered_tree_" + base_filename + "_" + FIT_TYPE + "_MhFit_obs2bin" + 
+                                 std::to_string(obs2bn_idx) + "_" + 
+                                 std::to_string(OBS2BN[obs2bn_idx]) + "_" + 
+                                 std::to_string(OBS2BN[obs2bn_idx+1]) + ".root";
+    
+    TFile* tempFile = nullptr;
+    TTree* filteredTree = nullptr;
+    
+    if (!REWRITE_CACHE && !gSystem->AccessPathName(cache_filename.c_str())) {
+        // File exists and we're not rewriting, open it
+        std::cout << "    Using cached tree from: " << cache_filename << std::endl;
+        tempFile = TFile::Open(cache_filename.c_str(), "READ");
+        filteredTree = (TTree*)tempFile->Get("filtered_tree");
+    } else {
+        // Create new filtered tree
+        std::cout << "    Creating new filtered tree at: " << cache_filename << std::endl;
+        tempFile = new TFile(cache_filename.c_str(), "RECREATE");
+        filteredTree = RAW_TREE->CopyTree(pre_cut.GetTitle());
+        filteredTree->SetName("filtered_tree");
+        filteredTree->SetDirectory(tempFile);
+        tempFile->Write();
+    }
 
     //plot binning scheme on filteredTree
     BinningSchemePlot(filteredTree);
@@ -135,7 +164,6 @@ void Chi2_Fitter::RunMhChi2Fit(int obs2bn_idx){
     SinCanvas->SaveAs((OUT_DIR + "SinFits.png").c_str());
     SinCanvas->Clear("D");
     tempFile->Close();
-    gSystem->Unlink(tempFile->GetName());
     delete tempFile;
     delete neg_hel;
     delete pos_hel;
@@ -155,12 +183,33 @@ void Chi2_Fitter::RunMxChi2Fit(int obs2bn_idx){
     TCut obs2_cut = TCut((OBS2 + ">" + std::to_string(OBS2BN[obs2bn_idx]) + " && " + OBS2 + "<" + std::to_string(OBS2BN[obs2bn_idx+1])).c_str());
     TCut pre_cut = Diphoton_cut && Mh_cut && obs2_cut;
 
-    // Create temporary file for filtered trees to avoid memory issues
-    std::cout << "  Creating pre-filtered tree..." << std::endl;
-    std::string pid = std::to_string(getpid());
-    TFile* tempFile = new TFile(("/lustre24/expphy/volatile/clas12/users/tjhellst/filtered_tree_temp_MxFitMLM_" + pid + ".root").c_str(), "RECREATE");
-    TTree* filteredTree = RAW_TREE->CopyTree(pre_cut.GetTitle());
-    filteredTree->SetDirectory(tempFile); // Associate with temp file
+    // Create or open cached filtered tree
+    std::cout << "  Creating/loading pre-filtered tree..." << std::endl;
+    
+    // Generate unique filename based on input file, fit_type and obs2 bin
+    std::string base_filename = GetBaseFilename(IN_FILE);
+    std::string cache_filename = CACHE_DIR + "/filtered_tree_" + base_filename + "_" + FIT_TYPE + "_MxFit_obs2bin" + 
+                                 std::to_string(obs2bn_idx) + "_" + 
+                                 std::to_string(OBS2BN[obs2bn_idx]) + "_" + 
+                                 std::to_string(OBS2BN[obs2bn_idx+1]) + ".root";
+    
+    TFile* tempFile = nullptr;
+    TTree* filteredTree = nullptr;
+    
+    if (!REWRITE_CACHE && !gSystem->AccessPathName(cache_filename.c_str())) {
+        // File exists and we're not rewriting, open it
+        std::cout << "    Using cached tree from: " << cache_filename << std::endl;
+        tempFile = TFile::Open(cache_filename.c_str(), "READ");
+        filteredTree = (TTree*)tempFile->Get("filtered_tree");
+    } else {
+        // Create new filtered tree
+        std::cout << "    Creating new filtered tree at: " << cache_filename << std::endl;
+        tempFile = new TFile(cache_filename.c_str(), "RECREATE");
+        filteredTree = RAW_TREE->CopyTree(pre_cut.GetTitle());
+        filteredTree->SetName("filtered_tree");
+        filteredTree->SetDirectory(tempFile);
+        tempFile->Write();
+    }
 
     //plot binning scheme on filteredTree
     BinningSchemePlot(filteredTree);
@@ -199,7 +248,6 @@ void Chi2_Fitter::RunMxChi2Fit(int obs2bn_idx){
     SinCanvas->SaveAs((OUT_DIR + "SinFits.png").c_str());
     SinCanvas->Clear("D");
     tempFile->Close();
-    gSystem->Unlink(tempFile->GetName());
     delete tempFile;
     delete neg_hel;
     delete pos_hel;
@@ -258,9 +306,12 @@ std::vector<std::vector<std::pair<double, double>>> Chi2_Fitter::FitChi2(TTree* 
 
 std::pair<double,double> Chi2_Fitter::Mh_sig_fit(TTree* binnedTree, TCut bin_cut,int helicity){
     //Define RooFit Variables
-    RooRealVar Mh("Mh","Mh",0.3,1.4); 
-    RooConstVar xmin("xmin","xmin",0.3);
-    RooConstVar xmax("xmax","xmax",1.4); //used in the background formula to map Mh range to -1,1 for better Chebychev fitting
+    double lb = 0.4; //fitting bounds
+    double ub = 1.2;
+
+    RooRealVar Mh("Mh","Mh",lb,ub); 
+    RooConstVar xmin("xmin","xmin",lb);
+    RooConstVar xmax("xmax","xmax",ub); //used in the background formula to map Mh range to -1,1 for better Chebychev fitting
 
     RooRealVar mu("m_{0}", "mu", 0.78, 0.75, 0.9);
     RooRealVar sigma("#sigma", "sigma", 0.06, 0.001, 0.3);
@@ -278,7 +329,6 @@ std::pair<double,double> Chi2_Fitter::Mh_sig_fit(TTree* binnedTree, TCut bin_cut
     
     //Define Roo Fitting Models
     RooGaussian sig("sig", "gaussian Fit", Mh, mu, sigma);
-    //RooChebychev background("background", "Background", MhPrime, pars_pol);
     //Fit to a Chebychev centered around the rho peak
     RooGenericPdf background(
     "background",
@@ -548,7 +598,7 @@ void Chi2_Fitter::PlotSigFitGraph(RooDataSet& binned_data, RooRealVar& x,
                              PHIBN_EDGES[phi_bin_idx], 
                              PHIBN_EDGES[phi_bin_idx+1]);
 
-  TH1F* temp_hist = (TH1F*)binned_data.createHistogram(hist_name.c_str(), x, RooFit::Binning(200, x.getMin(), x.getMax()));
+  TH1F* temp_hist = (TH1F*)binned_data.createHistogram(hist_name.c_str(), x, RooFit::Binning(75, x.getMin(), x.getMax()));
   // Clone it to ensure complete independence from RooDataSet
   TH1F* data_hist = (TH1F*)temp_hist->Clone((hist_name + "_clone").c_str());
   data_hist->SetDirectory(0);  // Detach from any ROOT directory management

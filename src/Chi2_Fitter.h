@@ -14,7 +14,8 @@ class Chi2_Fitter {
                     std::vector<double> phibn_edges,
                     std::vector<double> bn_edgs,
                     std::vector<double> obs2bn,
-                    std::string fit_type);
+                    std::string fit_type,
+                    bool rewrite_cache = false);
 
     //destructor
     ~Chi2_Fitter();
@@ -26,6 +27,8 @@ class Chi2_Fitter {
     std::string OBS2;
     std::string FIT_TYPE;
     std::string IN_FILE;
+    bool REWRITE_CACHE;
+    std::string CACHE_DIR;
     std::vector<double> PHIBN_EDGES;
     std::vector<double> PHIBN_CENTERS;
     std::vector<double> BN_EDGS;

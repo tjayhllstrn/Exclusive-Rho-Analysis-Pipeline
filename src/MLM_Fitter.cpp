@@ -10,7 +10,8 @@ MLM_Fitter::MLM_Fitter(const char* treename, const char* out_dir,
                               const char* in_file,
                             std::vector<double> bn_edgs,
                             std::vector<double> obs2bn,
-                            std::string fit_type)
+                            std::string fit_type,
+                            bool rewrite_cache)
  : TREENAME(treename),
    OUT_DIR(out_dir),
    OBS(obs_s),
@@ -18,7 +19,9 @@ MLM_Fitter::MLM_Fitter(const char* treename, const char* out_dir,
    IN_FILE(in_file),
    BN_EDGS(bn_edgs),
    OBS2BN(obs2bn),
-   FIT_TYPE(fit_type)
+   FIT_TYPE(fit_type),
+   REWRITE_CACHE(rewrite_cache),
+   CACHE_DIR("/lustre24/expphy/volatile/clas12/users/tjhellst/cache")
    {
     // suppress RooFit messages
     RooMsgService* rms = &RooMsgService::instance();
@@ -33,6 +36,10 @@ MLM_Fitter::MLM_Fitter(const char* treename, const char* out_dir,
     }
     RAW_TREE = (TTree*)file->Get(treename);
 
+    // Create cache directory if it doesn't exist
+    gSystem->mkdir(CACHE_DIR.c_str(), true);
+    std::cout << "Cache directory: " << CACHE_DIR << " (rewrite_cache=" << REWRITE_CACHE << ")" << std::endl;
+
     //populate the BN_CENTERS vector for later plotting
     BN_CENTERS.reserve(bn_edgs.size() - 1);
     for (size_t i = 0; i < bn_edgs.size() - 1; ++i) {
@@ -45,6 +52,21 @@ MLM_Fitter::MLM_Fitter(const char* treename, const char* out_dir,
   //destructor
   MLM_Fitter::~MLM_Fitter(){
     // std::cout<<"MLM_Fitter Destructor called"<<std::endl;
+}
+
+//Helper function to extract base filename without path and extension
+std::string GetBaseFilename(const std::string& filepath) {
+    // Find last slash (works for both / and \)
+    size_t lastSlash = filepath.find_last_of("/\\");
+    std::string filename = (lastSlash == std::string::npos) ? filepath : filepath.substr(lastSlash + 1);
+    
+    // Remove extension
+    size_t lastDot = filename.find_last_of(".");
+    if (lastDot != std::string::npos) {
+        filename = filename.substr(0, lastDot);
+    }
+    
+    return filename;
 }
    
 //---------------------------------------------------------------------------------------------------------------
@@ -74,13 +96,33 @@ void MLM_Fitter::RunMhFitMLM(int obs2bn_idx){
   TCut obs2_cut = TCut((OBS2 + ">" + std::to_string(OBS2BN[obs2bn_idx]) + " && " + OBS2 + "<" + std::to_string(OBS2BN[obs2bn_idx+1])).c_str());
   TCut pre_cut = Diphoton_cut && Mx_cut && obs2_cut;
   
+  // Create or open cached filtered tree
+  std::cout << "  Creating/loading pre-filtered tree..." << std::endl;
   
-  // Create temporary file for filtered trees to avoid memory issues
-  std::cout << "  Creating pre-filtered tree..." << std::endl;
-  std::string pid = std::to_string(getpid());
-  TFile* tempFile = new TFile(("/lustre24/expphy/volatile/clas12/users/tjhellst/filtered_tree_temp_MhFitMLM_" + pid + ".root").c_str(), "RECREATE");
-  TTree* filteredTree = RAW_TREE->CopyTree(pre_cut.GetTitle());
-  filteredTree->SetDirectory(tempFile); // Associate with temp file
+  // Generate unique filename based on input file, fit_type and obs2 bin
+  std::string base_filename = GetBaseFilename(IN_FILE);
+  std::string cache_filename = CACHE_DIR + "/filtered_tree_" + base_filename + "_" + FIT_TYPE + "_MhFit_obs2bin" + 
+                               std::to_string(obs2bn_idx) + "_" + 
+                               std::to_string(OBS2BN[obs2bn_idx]) + "_" + 
+                               std::to_string(OBS2BN[obs2bn_idx+1]) + ".root";
+  
+  TFile* tempFile = nullptr;
+  TTree* filteredTree = nullptr;
+  
+  if (!REWRITE_CACHE && !gSystem->AccessPathName(cache_filename.c_str())) {
+    // File exists and we're not rewriting, open it
+    std::cout << "    Using cached tree from: " << cache_filename << std::endl;
+    tempFile = TFile::Open(cache_filename.c_str(), "READ");
+    filteredTree = (TTree*)tempFile->Get("filtered_tree");
+  } else {
+    // Create new filtered tree
+    std::cout << "    Creating new filtered tree at: " << cache_filename << std::endl;
+    tempFile = new TFile(cache_filename.c_str(), "RECREATE");
+    filteredTree = RAW_TREE->CopyTree(pre_cut.GetTitle());
+    filteredTree->SetName("filtered_tree");
+    filteredTree->SetDirectory(tempFile); // Associate with temp file
+    tempFile->Write();  // Save to cache
+  }
   
   //Run Fitting Procedure on each region
   std::cout << "  Fitting Signal+Background Region..." << std::endl;
@@ -98,12 +140,9 @@ void MLM_Fitter::RunMhFitMLM(int obs2bn_idx){
 
 
 
-  // Clean up filtered tree and temp file
-  delete filteredTree;  // Delete the tree first
-  std::string tempFileName = tempFile->GetName();  // Save filename before closing
+  // Clean up - close cache file but don't delete it
   tempFile->Close();
   delete tempFile;
-  gSystem->Unlink(tempFileName.c_str());  // Delete the file from disk
   delete Mh_cut_sb;
   delete Mh_cut_b;
 }
@@ -133,13 +172,33 @@ void MLM_Fitter::RunMxFitMLM(int obs2bn_idx){
   TCut obs2_cut = TCut((OBS2 + ">" + std::to_string(OBS2BN[obs2bn_idx]) + " && " + OBS2 + "<" + std::to_string(OBS2BN[obs2bn_idx+1])).c_str());
   TCut pre_cut = Diphoton_cut && Mh_cut && obs2_cut;
   
+  // Create or open cached filtered tree
+  std::cout << "  Creating/loading pre-filtered tree..." << std::endl;
   
-  // Create temporary file for filtered trees to avoid memory issues
-  std::cout << "  Creating pre-filtered tree..." << std::endl;
-  std::string pid = std::to_string(getpid());
-  TFile* tempFile = new TFile(("/lustre24/expphy/volatile/clas12/users/tjhellst/filtered_tree_temp_MxFitMLM_" + pid + ".root").c_str(), "RECREATE");
-  TTree* filteredTree = RAW_TREE->CopyTree(pre_cut.GetTitle());
-  filteredTree->SetDirectory(tempFile); // Associate with temp file
+  // Generate unique filename based on input file, fit_type and obs2 bin
+  std::string base_filename = GetBaseFilename(IN_FILE);
+  std::string cache_filename = CACHE_DIR + "/filtered_tree_" + base_filename + "_" + FIT_TYPE + "_MxFit_obs2bin" + 
+                               std::to_string(obs2bn_idx) + "_" + 
+                               std::to_string(OBS2BN[obs2bn_idx]) + "_" + 
+                               std::to_string(OBS2BN[obs2bn_idx+1]) + ".root";
+  
+  TFile* tempFile = nullptr;
+  TTree* filteredTree = nullptr;
+  
+  if (!REWRITE_CACHE && !gSystem->AccessPathName(cache_filename.c_str())) {
+    // File exists and we're not rewriting, open it
+    std::cout << "    Using cached tree from: " << cache_filename << std::endl;
+    tempFile = TFile::Open(cache_filename.c_str(), "READ");
+    filteredTree = (TTree*)tempFile->Get("filtered_tree");
+  } else {
+    // Create new filtered tree
+    std::cout << "    Creating new filtered tree at: " << cache_filename << std::endl;
+    tempFile = new TFile(cache_filename.c_str(), "RECREATE");
+    filteredTree = RAW_TREE->CopyTree(pre_cut.GetTitle());
+    filteredTree->SetName("filtered_tree");
+    filteredTree->SetDirectory(tempFile); // Associate with temp file
+    tempFile->Write();  // Save to cache
+  }
   
   //Run Fitting Procedure on each region
   std::cout << "  Fitting Signal+Background Region..." << std::endl;
@@ -155,12 +214,9 @@ void MLM_Fitter::RunMxFitMLM(int obs2bn_idx){
 
   Calc_A_sig_from_A_sigbkg(obs2bn_idx);
 
-  // Clean up filtered tree and temp file
-  delete filteredTree;  // Delete the tree first
-  std::string tempFileName = tempFile->GetName();  // Save filename before closing
+  // Clean up - close cache file but don't delete it
   tempFile->Close();
   delete tempFile;
-  gSystem->Unlink(tempFileName.c_str());  // Delete the file from disk
   delete Mx_cut_sb;
   delete Mx_cut_b;
 }
@@ -252,21 +308,22 @@ void MLM_Fitter::PurityCalc_Mh(TTree* tree){
   
   std::cout << "Calculating Purity from Mh distribution..." << std::endl;
   double lb = 0.4; //fitting bounds
-  double ub = 1.7;
+  double ub = 1.2;
 
   //Create RooRealVar for Mh fitting 
   RooRealVar Mh("Mh", "Mh", lb, ub);
   RooRealVar obs(OBS.c_str(), OBS.c_str(), BN_EDGS.front(), BN_EDGS.back());
+  RooConstVar xmin("xmin","xmin",lb);
+  RooConstVar xmax("xmax","xmax",ub); //used in the background formula to map Mh range to -1,1 for better Chebychev fitting
   
   //Define fit parameters for signal (Gaussian)
   RooRealVar mu("m_{0}", "mu", 0.8, 0.6, 1);
   RooRealVar sigma("sigma_{sig}", "sigma", 0.06, 0.00001, 0.1);
   
   //Define fit parameters for background (Chebychev polynomial)
-  RooRealVar p1("p1", "p1", 0, -1, 1);
-  RooRealVar p2("p2", "p2", 0, -1, 1);
-  RooRealVar p3("p3", "p3", 0,-1,1);
-  RooRealVar p4("p4", "p4", 0,-1,1);
+  RooRealVar p1("p1", "p1", 0, -2, 2);
+  RooRealVar p2("p2", "p2", 0, -2, 2);
+  RooRealVar p3("p3", "p3", 0,-2,2);
   
   //Create extended PDF parameters
   int nEntries = tree->GetEntries() /  BN_CENTERS.size(); //approximate number of entries per obs bin
@@ -277,10 +334,13 @@ void MLM_Fitter::PurityCalc_Mh(TTree* tree){
   std::string sig_name = "sig" + std::to_string(bn_idx);
   RooGaussian sig(sig_name.c_str(), "gaussian Fit", Mh, mu, sigma);
   
-  //Create background PDF (Chebychev) - reduced order
-  RooArgList pars_pol(p1, p2, p3, p4);
+  //Create background PDF (Chebychev) 
   std::string bkg_name = "background" + std::to_string(bn_idx);
-  RooChebychev background(bkg_name.c_str(), "ChebyChev", Mh, pars_pol);
+  //Fit to a Chebychev centered around the rho peak
+  RooGenericPdf background(
+  bkg_name.c_str(),
+  "1 + p1*(2*(Mh - xmin)/(xmax - xmin)-1)+ p2*(2*(2*(Mh - xmin)/(xmax - xmin)-1)^2 - 1)+ p3*(4*(2*(Mh - xmin)/(xmax - xmin)-1)^3 - 3*(2*(Mh - xmin)/(xmax - xmin)-1))",
+  RooArgList(Mh, p1, p2,p3,xmin,xmax)); //
   
   //Combine signal and background into extended model
   RooArgList components(sig, background);
@@ -305,8 +365,7 @@ void MLM_Fitter::PurityCalc_Mh(TTree* tree){
 
 
     // Perform fit (suppress verbose output)
-    RooFitResult* fit_results = model_ext.fitTo(binned_data, 
-                                               RooFit::Range("fullRange"),
+    RooFitResult* fit_results = model_ext.fitTo(binned_data,
                                                RooFit::Save(true),
                                                RooFit::PrintLevel(-1),
                                                RooFit::Extended(true));
@@ -481,7 +540,7 @@ void MLM_Fitter::PlotPurityGraph(RooDataSet& binned_data, RooRealVar& x,
   std::string hist_title = "Purity Calculation Fit " + OBS + "(" + 
                         Form("%.2f", BN_EDGS[bn_idx]) + "," + 
                         Form("%.2f", BN_EDGS[bn_idx+1]) + ")";
-  TH1F* temp_hist = (TH1F*)binned_data.createHistogram(hist_name.c_str(), x, RooFit::Binning(200, x.getMin(), x.getMax()));
+  TH1F* temp_hist = (TH1F*)binned_data.createHistogram(hist_name.c_str(), x, RooFit::Binning(75, x.getMin(), x.getMax()));
 
   // Clone it to ensure complete independence from RooDataSet
   TH1F* data_hist = (TH1F*)temp_hist->Clone((hist_name + "_clone").c_str());

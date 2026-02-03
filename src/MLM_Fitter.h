@@ -13,7 +13,8 @@ class MLM_Fitter {
                    const char* in_file,
                    std::vector<double> bn_edgs,
                    std::vector<double> obs2bn,
-                   std::string fit_type);
+                   std::string fit_type,
+                   bool rewrite_cache = false);
 
     //Destructor
     ~MLM_Fitter();
@@ -25,6 +26,8 @@ class MLM_Fitter {
     std::string OBS2;
     std::string FIT_TYPE;
     std::string IN_FILE;
+    bool REWRITE_CACHE;
+    std::string CACHE_DIR;
     std::vector<double> BN_EDGS;
     std::vector<double> BN_CENTERS;
     std::vector<double> OBS2BN;
