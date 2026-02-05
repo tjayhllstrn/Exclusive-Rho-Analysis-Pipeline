@@ -3,12 +3,12 @@ import subprocess
 from pathlib import Path
 
 # === USER CONFIGURATION ===
-input_dirs = [Path("/lustre24/expphy/cache/clas12/rg-a/production/recon/fall2018/torus-1/pass2/main/train/nSidis"),Path("/lustre24/expphy/cache/clas12/rg-a/production/recon/spring2019/torus-1/pass2/dst/train/nSidis")]#,Path("/lustre24/expphy/cache/clas12/rg-a/production/montecarlo/clasdis_pass2/fa18_inb")
-input_file_base = 'nSidis_*.hipo' #corresponds with the file names that you want to run in input_dirs
+input_dirs = [Path("/lustre24/expphy/cache/clas12/rg-a/production/montecarlo/clasdis_pass2/fa18_inb")] #[Path("/lustre24/expphy/cache/clas12/rg-a/production/recon/fall2018/torus-1/pass2/main/train/nSidis"),Path("/lustre24/expphy/cache/clas12/rg-a/production/recon/spring2019/torus-1/pass2/dst/train/nSidis")]#,Path("/lustre24/expphy/cache/clas12/rg-a/production/montecarlo/clasdis_pass2/fa18_inb")
+input_file_base = 'clasdis_rga_fa18_inb_45nA_10604MeV*.hipo' #corresponds with the file names that you want to run in input_dirs
 
 output_base = Path("/w/hallb-scshelf2102/clas12/users/tjhellst/Exclusive-Rho-Analysis-Pipeline/out")
-output_names = ["pippi0_fall2018_in_pass2","pippi0_spring2019_in_pass2"] # must correspond with the order of the entries in input_dirs
-final_root_output_name = "pippi0_merged_in_pass2"
+output_names = ["pippi0_MC_in_50nA"] # must correspond with the order of the entries in input_dirs
+final_root_output_name = "pippi0_MC_in_pass2"
 
 config_file = "config/pippi0_RGAinbending_tbinning.txt"
 
@@ -16,7 +16,7 @@ dep_list = []  # Holds hadd job IDs for the final step
 
 fit_types = ["MhMLM","MxMLM","MhChi2","MxChi2"]
 
-def sbatch_submit(args,dry_run=True):
+def sbatch_submit(args,dry_run=False):
     """Run sbatch and return the job ID."""
     print(f"Submitting: {' '.join(args)}")
     

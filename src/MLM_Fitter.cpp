@@ -316,9 +316,10 @@ void MLM_Fitter::PurityCalc_Mh(TTree* tree){
   RooConstVar xmin("xmin","xmin",lb);
   RooConstVar xmax("xmax","xmax",ub); //used in the background formula to map Mh range to -1,1 for better Chebychev fitting
   
-  //Define fit parameters for signal (Gaussian)
+  //Define fit parameters for signal (Voigtian)
   RooRealVar mu("m_{0}", "mu", 0.8, 0.6, 1);
   RooRealVar sigma("sigma_{sig}", "sigma", 0.06, 0.00001, 0.1);
+  RooRealVar gamma("#gamma", "#gamma", 0.15, 0.12, 0.16); //0.15 GeV is the FWHM of the rho meson based on PDG
   
   //Define fit parameters for background (Chebychev polynomial)
   RooRealVar p1("p1", "p1", 0, -2, 2);
@@ -330,9 +331,9 @@ void MLM_Fitter::PurityCalc_Mh(TTree* tree){
   RooRealVar N_sig("N_{sig}", "N_sig", nEntries*0.7, 0, nEntries*1.2);
   RooRealVar N_bkg("N_{bkg}", "N_bkg", nEntries*0.3, 0, nEntries*1.2);
   
-  //Create signal PDF (Gaussian)
+  //Create signal PDF (Voigtian)
   std::string sig_name = "sig" + std::to_string(bn_idx);
-  RooGaussian sig(sig_name.c_str(), "gaussian Fit", Mh, mu, sigma);
+  RooVoigtian sig(sig_name.c_str(), "Signal", Mh, mu,gamma, sigma);
   
   //Create background PDF (Chebychev) 
   std::string bkg_name = "background" + std::to_string(bn_idx);
