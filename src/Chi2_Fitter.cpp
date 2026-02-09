@@ -326,8 +326,11 @@ std::pair<double,double> Chi2_Fitter::Mh_sig_fit(TTree* binnedTree, TCut bin_cut
     //Define fit parameters for signal (Gaussian)
     RooRealVar mu(("m0_" + idx).c_str(), "#mu", 0.78, 0.75, 0.9);
     // RooRealVar sigma(("sigma_" + idx).c_str(), "#sigma", 0.06, 0.001, 0.3);
-    RooRealVar sigma(("sigma_" + idx).c_str(), "#sigma", 0.02, 0.01, 0.05);
-    RooRealVar gamma(("gamma_" + idx).c_str(), "#gamma", 0.15, 0.12, 0.16);
+    RooRealVar sigma(("sigma_" + idx).c_str(), "#sigma", 0.06, 0.01, 0.1);
+    RooRealVar gamma(("gamma_" + idx).c_str(), "#gamma", 0.15, 0.145, 0.155);
+
+    RooRealVar mu2(("m02_" + idx).c_str(), "#mu_bkg", 0.5, 0.45, 0.55);
+    RooRealVar sigma2(("sigma2_" + idx).c_str(), "#sigma_bkg", 0.06, 0.01, 0.1);
 
     //Define fit parameters for background (Chebychev polynomial)
     RooRealVar p1(("p1_" + idx).c_str(), "p1", 0, -2, 2);
@@ -335,16 +338,22 @@ std::pair<double,double> Chi2_Fitter::Mh_sig_fit(TTree* binnedTree, TCut bin_cut
     RooRealVar p3(("p3_" + idx).c_str(), "p3", 0, -2, 2);
     
     RooRealVar N_sig(("Nsig_" + idx).c_str(), "N_sig", N_total*0.7, 100, N_total);
-    RooRealVar N_bkg(("Nbkg_" + idx).c_str(), "N_bkg", N_total*0.3, 50, N_total);
+    RooRealVar N_bkg_cheby(("Nbkg_cheby_" + idx).c_str(), "N_cheby", N_total*0.3, 50, N_total);
+    //RooRealVar N_bkg_gauss(("Nbkg_gauss_" + idx).c_str(), "N_gauss", N_total*0.05, 10, N_total);
 
     
     //Define Roo Fitting Models
-    RooVoigtian sig(("sig_" + idx).c_str(), "Sig", Mh, mu,gamma,sigma);
+    RooVoigtian sig(("sig_" + idx).c_str(), "Sig", Mh, mu, gamma, sigma);
     //Fit to a Chebychev centered around the rho peak
-    RooChebychev background(("background_" + idx).c_str(), "Bkg", Mh, RooArgList(p1, p2,p3));
+    RooChebychev bkg_chebychev(("bkh_chebychev_" + idx).c_str(), "Bkg", Mh, RooArgList(p1, p2,p3));
 
+    //Add a Gaussian component to the background via a RooGenericPdf
+    //RooGaussian bkg_gaus(("bkg_gaus_" + idx).c_str(), "Bkg Gauss", Mh, mu2, sigma2);
+    // RooGenericPdf background(("background" + idx).c_str(),
+    //                                    "@0 + @1",
+    //                                    RooArgList(bkg_chebychev, bkg_gaus));
 
-    RooAddPdf model_ext(("model_ext_" + idx).c_str(), "Sig + Bkg", RooArgList(sig, background), RooArgList(N_sig, N_bkg));
+    RooAddPdf model_ext(("model_ext_" + idx).c_str(), "Sig + Bkg", RooArgList(sig, bkg_chebychev), RooArgList(N_sig, N_bkg_cheby));
     
 
 
@@ -368,14 +377,37 @@ std::pair<double,double> Chi2_Fitter::Mh_sig_fit(TTree* binnedTree, TCut bin_cut
     // double N_sig_val = N_total - N_bkg.getVal();
     // // Error propagation: sigma_Nsig = sqrt(sigma_Nbkg^2)
     // double N_sig_err = N_bkg.getError();
-    
-    std::pair<double,double> N_sig_result(N_sig.getVal(), N_sig.getError());
 
     //Plot fit result. use helicity to assign graph to right entry in the pair
     //fit_results->correlationMatrix().Print();
-    PlotSigFitGraph(binned_data, Mh, sig, background, N_sig, N_bkg, model_ext, helicity);
+      // Create TGraph objects by evaluating PDFs
+    const int nPoints = 200;
+    double* xPoints = new double[nPoints];
+    double* yTotal = new double[nPoints];
+    double* ySig = new double[nPoints];
+    double* yBkg = new double[nPoints];
     
-
+    
+    // Calculate bin width for proper normalization
+    int bin_number = 75;
+    double binWidth = (Mh.getMax() - Mh.getMin()) / bin_number;
+    RooArgSet args(Mh);
+    for (int i = 0; i < nPoints; i++) {
+        xPoints[i] = Mh.getMin() + (Mh.getMax() - Mh.getMin()) * i / (nPoints - 1);
+        Mh.setVal(xPoints[i]);
+        
+        // Evaluate PDFs and scale by number of events and bin width
+        double sig_val = sig.getVal(args) * N_sig.getVal() * binWidth;
+        double bkg_cheby_val = bkg_chebychev.getVal(args) * N_bkg_cheby.getVal() * binWidth;
+        //double bkg_gauss_val = bkg_gaus.getVal(args) * N_bkg_gauss.getVal() * binWidth;
+        
+        ySig[i] = sig_val;
+        yBkg[i] = bkg_cheby_val;
+        yTotal[i] = sig_val + bkg_cheby_val;
+    }
+    PlotSigFitGraph(binned_data, Mh, xPoints, ySig, yBkg,yTotal, model_ext, helicity, bin_number);
+    
+    std::pair<double,double> N_sig_result(N_sig.getVal(), N_sig.getError());
     return N_sig_result;
 }
 
@@ -414,9 +446,32 @@ std::pair<double,double> Chi2_Fitter::Mx_sig_fit(TTree* binnedTree, TCut bin_cut
                                                RooFit::PrintLevel(-1),
                                                RooFit::Extended(true));
     std::pair<double,double> N_sig_result(N_sig.getVal(), N_sig.getError());
+    
+    // Create TGraph objects by evaluating PDFs
+    const int nPoints = 200;
+    double* xPoints = new double[nPoints];
+    double* yTotal = new double[nPoints];
+    double* ySig = new double[nPoints];
+    double* yBkg = new double[nPoints];
 
+    // Calculate bin width for proper normalization
+    int bin_number = 75;
+    double binWidth = (Mx.getMax() - Mx.getMin()) / bin_number;
+    RooArgSet args(Mx);
+    for (int i = 0; i < nPoints; i++) {
+        xPoints[i] = Mx.getMin() + (Mx.getMax() - Mx.getMin()) * i / (nPoints - 1);
+        Mx.setVal(xPoints[i]);
+        
+        // Evaluate PDFs and scale by number of events and bin width
+        double sig_val = sig.getVal(args) * N_sig.getVal() * binWidth;
+        double bkg_val = background.getVal(args) * N_bkg.getVal() * binWidth;
+        
+        ySig[i] = sig_val;
+        yBkg[i] = bkg_val;
+        yTotal[i] = sig_val + bkg_val;
+    }
     //Plot fit result. use helicity to assign graph to right entry in the pair
-    PlotSigFitGraph(binned_data, Mx, sig, background, N_sig, N_bkg, model_ext, helicity);
+    PlotSigFitGraph(binned_data, Mx,xPoints, ySig, yBkg, yTotal, model_ext, helicity, bin_number);
 
 
     return N_sig_result;
@@ -634,10 +689,12 @@ void Chi2_Fitter::PlotToCanvas_N_sig_BarHist() {
     delete Nasym_c;
 }
 
-void Chi2_Fitter::PlotSigFitGraph(RooDataSet& binned_data, RooRealVar& x,
-                                     RooAbsPdf& sig, RooAbsPdf& background,RooRealVar& N_sig,RooRealVar& N_bkg,RooAddPdf& model_ext, int helicity){
+void Chi2_Fitter::PlotSigFitGraph(RooDataSet& binned_data, RooRealVar& x, double xPoints[200],
+                                     double ySig[200], double yBkg[200], double yTotal[200], RooAddPdf& model_ext, int helicity, int bin_number){
   //Make ROOT objects for plotting and storing in member vectors -------------------------------------------------
   std::string idx_str = std::to_string(obs_bin_idx) + "_" + std::to_string(phi_bin_idx);
+
+  const int nPoints = 200;
   
   // Create data histogram from RooDataSet
   std::string hist_name = "data_hist_" + idx_str;
@@ -648,7 +705,7 @@ void Chi2_Fitter::PlotSigFitGraph(RooDataSet& binned_data, RooRealVar& x,
                              PHIBN_EDGES[phi_bin_idx], 
                              PHIBN_EDGES[phi_bin_idx+1]);
 
-  TH1F* temp_hist = (TH1F*)binned_data.createHistogram(hist_name.c_str(), x, RooFit::Binning(75, x.getMin(), x.getMax()));
+  TH1F* temp_hist = (TH1F*)binned_data.createHistogram(hist_name.c_str(), x, RooFit::Binning(bin_number, x.getMin(), x.getMax()));
   // Clone it to ensure complete independence from RooDataSet
   TH1F* data_hist = (TH1F*)temp_hist->Clone((hist_name + "_clone").c_str());
   data_hist->SetDirectory(0);  // Detach from any ROOT directory management
@@ -661,31 +718,31 @@ void Chi2_Fitter::PlotSigFitGraph(RooDataSet& binned_data, RooRealVar& x,
   data_hist->GetYaxis()->SetTitle("Events");
   data_hist->SetStats(0);
   
-  // Create TGraph objects by evaluating PDFs
-  const int nPoints = 200;
-  double* xPoints = new double[nPoints];
-  double* yTotal = new double[nPoints];
-  double* ySig = new double[nPoints];
-  double* yBkg = new double[nPoints];
+//   // Create TGraph objects by evaluating PDFs
+//   const int nPoints = 200;
+//   double* xPoints = new double[nPoints];
+//   double* yTotal = new double[nPoints];
+//   double* ySig = new double[nPoints];
+//   double* yBkg = new double[nPoints];
 
   
   
-  // Calculate bin width for proper normalization
-  double binWidth = data_hist->GetBinWidth(1);
-  RooArgSet args(x);
-  for (int i = 0; i < nPoints; i++) {
-    xPoints[i] = x.getMin() + (x.getMax() - x.getMin()) * i / (nPoints - 1);
-    x.setVal(xPoints[i]);
+//   // Calculate bin width for proper normalization
+//   double binWidth = data_hist->GetBinWidth(1);
+//   RooArgSet args(x);
+//   for (int i = 0; i < nPoints; i++) {
+//     xPoints[i] = x.getMin() + (x.getMax() - x.getMin()) * i / (nPoints - 1);
+//     x.setVal(xPoints[i]);
     
-    // Evaluate PDFs and scale by number of events and bin width
-    double sig_val = sig.getVal(args) * N_sig.getVal() * binWidth;
-    double bkg_val = background.getVal(args) * N_bkg.getVal() * binWidth;
+//     // Evaluate PDFs and scale by number of events and bin width
+//     double sig_val = sig.getVal(args) * N_sig.getVal() * binWidth;
+//     double bkg_cheby_val = background_cheby.getVal(args) * N_bkg_cheby.getVal() * binWidth;
+//     double bkg_gauss_val = background_gauss.getVal(args) * N_bkg_gauss.getVal() * binWidth;
     
-    ySig[i] = sig_val;
-    yBkg[i] = bkg_val;
-    yTotal[i] = sig_val + bkg_val;
-
-  }
+//     ySig[i] = sig_val;
+//     yBkg[i] = bkg_cheby_val + bkg_gauss_val;
+//     yTotal[i] = sig_val + bkg_cheby_val + bkg_gauss_val;
+//   }
   
   // Create TGraph objects
   std::string total_graph_name = "totalFit_" + idx_str;
@@ -718,7 +775,7 @@ void Chi2_Fitter::PlotSigFitGraph(RooDataSet& binned_data, RooRealVar& x,
 
   //legend
   std::string leg_name = "legend_" + idx_str;
-  TLegend* leg = new TLegend(0.45, 0.55, 0.75, 0.85);
+  TLegend* leg = new TLegend(0.55, 0.55, 0.85, 0.85);
   leg->SetName(leg_name.c_str());
   leg->SetBorderSize(0);
   leg->AddEntry(data_hist, "Data", "p");
@@ -758,8 +815,8 @@ void Chi2_Fitter::PlotSigFitGraph(RooDataSet& binned_data, RooRealVar& x,
     TString name = var->GetTitle();
     double val = var->getVal();
     double err = var->getError();
-    if (name.Contains("N_{")) {
-      param_box->AddText(Form("%s: %.2e#pm%.2e", name.Data(), val, err));
+    if (name.Contains("N_")) {
+      param_box->AddText(Form("%s: %.1e#pm%.0f", name.Data(), val, err));
     } else {
       param_box->AddText(Form("%s: %.2f#pm%.2f", name.Data(), val, err));
     }

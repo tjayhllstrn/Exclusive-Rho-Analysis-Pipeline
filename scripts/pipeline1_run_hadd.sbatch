@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --partition=production
 #SBATCH --account=clas12
-#SBATCH --mem=2500
+#SBATCH --mem=5000
 #SBATCH --time=02:00:00
 #SBATCH --output=/farm_out/%u/%x-%j-%N.out
 #SBATCH --error=/farm_out/%u/%x-%j-%N.err

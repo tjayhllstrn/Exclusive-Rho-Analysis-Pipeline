@@ -2,7 +2,7 @@
 
 #SBATCH --partition=production
 #SBATCH --account=clas12
-#SBATCH --mem-per-cpu=3000
+#SBATCH --mem-per-cpu=5000
 #SBATCH --nodes=2
 #SBATCH --array=0-0 
 #SBATCH --chdir=/scratch/slurm
@@ -11,7 +11,9 @@
 #SBATCH --job-name=pipeline0_runSingleHipo_pippi0
 #SBATCH --time=5:00:00
 
+pwd
 cd /w/hallb-scshelf2102/clas12/users/tjhellst/Exclusive-Rho-Analysis-Pipeline/
+pwd
 source /u/home/tjhellst/.Exclusive-Rho-Analysis-Pipeline/bin/activate
 
 INPUT_DIR=$1

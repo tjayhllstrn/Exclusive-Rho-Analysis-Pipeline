@@ -69,8 +69,8 @@ class Chi2_Fitter {
     //plotting methods
     void BinningSchemePlot(TTree* filteredTree);
     void PlotToCanvas_N_sig_BarHist();
-    void PlotSigFitGraph(RooDataSet& binned_data, RooRealVar& x,
-                                     RooAbsPdf& sig, RooAbsPdf& background,RooRealVar& N_sig,RooRealVar& N_bkg,RooAddPdf& model_ext, int helicity);
+    void PlotSigFitGraph(RooDataSet& binned_data, RooRealVar& x, double xPoints[200],
+                                     double ySig[200], double yBkg[200], double yTotal[200], RooAddPdf& model_ext, int helicity,int bin_number);
     double CalculateChi2(TH1F* data_hist, TGraph* fit_graph);
     void PlotToCanvas_PostageStamp(std::vector<TH1F*>& data_hists,
                                             std::vector<TGraph*>& total_graphs,
