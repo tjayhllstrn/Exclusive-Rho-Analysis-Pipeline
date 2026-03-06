@@ -15,7 +15,8 @@ class Chi2_Fitter {
                     std::vector<double> bn_edgs,
                     std::vector<double> obs2bn,
                     std::string fit_type,
-                    bool rewrite_cache = false);
+                    bool rewrite_cache = false,
+                    double MinPhoEnergy = 0.2);
 
     //destructor
     ~Chi2_Fitter();
@@ -38,6 +39,8 @@ class Chi2_Fitter {
     int obs_bin_idx;
     int phi_bin_idx;
     int obs2_bin_idx;
+    double MinPhoEnergy;
+    bool USE_BIN_AVERAGE;
 
     //data structs for managing results
     std::vector<std::vector<std::pair<double, double>>> N_sig_pos; //vector indexed by [obs bin, phibin] holding pairs of (N_sig, N_sig_err)
@@ -60,6 +63,7 @@ class Chi2_Fitter {
     //fitting methods
     void RunMhChi2Fit(int obs2bn_idx);
     void RunMxChi2Fit(int obs2bn_idx);
+    void CalculateBinAverages(TTree* filteredTree);
     std::vector<std::vector<std::pair<double, double>>> FitChi2(TTree* filteredTree,TCut* neg_hel, int helicity);
     std::pair<double,double> Mh_sig_fit(TTree* filteredTree, TCut bin_cut, int helicity);
     std::pair<double,double> Mx_sig_fit(TTree* filteredTree, TCut bin_cut, int helicity);

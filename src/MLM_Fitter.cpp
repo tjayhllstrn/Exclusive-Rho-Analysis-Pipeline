@@ -11,7 +11,8 @@ MLM_Fitter::MLM_Fitter(const char* treename, const char* out_dir,
                             std::vector<double> bn_edgs,
                             std::vector<double> obs2bn,
                             std::string fit_type,
-                            bool rewrite_cache)
+                            bool rewrite_cache,
+                            double minPhoEnergy)
  : TREENAME(treename),
    OUT_DIR(out_dir),
    OBS(obs_s),
@@ -21,8 +22,10 @@ MLM_Fitter::MLM_Fitter(const char* treename, const char* out_dir,
    OBS2BN(obs2bn),
    FIT_TYPE(fit_type),
    REWRITE_CACHE(rewrite_cache),
-   CACHE_DIR("/lustre24/expphy/volatile/clas12/users/tjhellst/cache")
+   CACHE_DIR("/lustre24/expphy/volatile/clas12/users/tjhellst/cache"),
+   MinPhoEnergy(minPhoEnergy)
    {
+    USE_BIN_AVERAGE = true; //default to using data-weighted bin averages for fitting, can be turned off to use geometric bin centers instead (for testing systematics)
     // suppress RooFit messages
     RooMsgService* rms = &RooMsgService::instance();
     rms->setSilentMode(true);
@@ -54,6 +57,37 @@ MLM_Fitter::MLM_Fitter(const char* treename, const char* out_dir,
     // std::cout<<"MLM_Fitter Destructor called"<<std::endl;
 }
 
+void MLM_Fitter::CalculateBinAverages(TTree* filteredTree) {
+    std::cout << "  Calculating data-weighted bin averages..." << std::endl;
+    
+    // Clear and resize the centers vectors
+    BN_CENTERS.clear();
+    BN_CENTERS.reserve(BN_EDGS.size() - 1);
+    
+    // Calculate OBS bin averages
+    for (size_t i = 0; i < BN_EDGS.size() - 1; ++i) {
+        TH1F hist("temp_obs_hist", "temp", 100, BN_EDGS[i], BN_EDGS[i+1]);
+        TCut bin_cut = TCut((OBS + ">" + std::to_string(BN_EDGS[i]) + " && " + OBS + "<" + std::to_string(BN_EDGS[i+1])).c_str());
+        filteredTree->Draw((OBS + ">>temp_obs_hist").c_str(), bin_cut, "goff");
+        
+        double bin_avg = hist.GetMean();
+        int entries = hist.GetEntries();
+        
+        // Fall back to geometric center if bin is empty
+        if (entries == 0 || bin_avg == 0) {
+            bin_avg = 0.5 * (BN_EDGS[i] + BN_EDGS[i+1]);
+            std::cout << "    Warning: Empty OBS bin [" << BN_EDGS[i] << ", " << BN_EDGS[i+1] 
+                      << "], using geometric center: " << bin_avg << std::endl;
+        } else {
+            std::cout << "    OBS bin [" << BN_EDGS[i] << ", " << BN_EDGS[i+1] 
+                      << "]: average = " << bin_avg << " (" << entries << " entries)" << std::endl;
+        }
+        
+        BN_CENTERS.push_back(bin_avg);
+    }
+    
+}
+
 //Helper function to extract base filename without path and extension
 std::string GetBaseFilename(const std::string& filepath) {
     // Find last slash (works for both / and \)
@@ -83,18 +117,18 @@ void MLM_Fitter::RunMhFitMLM(int obs2bn_idx){
   //define sigbkg and bkg region edges
   sigbkg_min = 0.65;
   sigbkg_max = 0.9;
-  bkg_min = 1.1;
-  bkg_max = 1.7;
+  bkg_reg = "(1.1<Mh&&Mh<1.7) | (0.25<Mh&&Mh<0.5)";
 
   //define Missing Mass cut
   double Mx_min = 0.85;
   double Mx_max = 1.05;
   
   //Pre-Cut the Tree for efficiency
-  TCut Diphoton_cut = TCut("Mdiphoton<0.16 && 0.115<Mdiphoton");
+  TCut Diphoton_cut = TCut("Mdiphoton<0.164 && 0.104<Mdiphoton");
   TCut Mx_cut = TCut(("Mx>" + std::to_string(Mx_min) + " && Mx<" + std::to_string(Mx_max)).c_str());
   TCut obs2_cut = TCut((OBS2 + ">" + std::to_string(OBS2BN[obs2bn_idx]) + " && " + OBS2 + "<" + std::to_string(OBS2BN[obs2bn_idx+1])).c_str());
-  TCut pre_cut = Diphoton_cut && Mx_cut && obs2_cut;
+  TCut MinPhoCut = TCut(("pho1_E>" + std::to_string(MinPhoEnergy) + " && " + std::to_string(MinPhoEnergy) + "<pho2_E").c_str());
+  TCut pre_cut = Diphoton_cut && Mx_cut && obs2_cut && MinPhoCut;
   
   // Create or open cached filtered tree
   std::cout << "  Creating/loading pre-filtered tree..." << std::endl;
@@ -104,8 +138,9 @@ void MLM_Fitter::RunMhFitMLM(int obs2bn_idx){
   std::string cache_filename = CACHE_DIR + "/filtered_tree_" + base_filename + "_" + FIT_TYPE + "_MhFit_obs2bin" + 
                                std::to_string(obs2bn_idx) + "_" + 
                                std::to_string(OBS2BN[obs2bn_idx]) + "_" + 
-                               std::to_string(OBS2BN[obs2bn_idx+1]) + ".root";
-  
+                               std::to_string(OBS2BN[obs2bn_idx+1]) + "_" +
+                               "MinPhoE_" + std::to_string(MinPhoEnergy) +
+                               ".root";
   TFile* tempFile = nullptr;
   TTree* filteredTree = nullptr;
   
@@ -123,6 +158,10 @@ void MLM_Fitter::RunMhFitMLM(int obs2bn_idx){
     filteredTree->SetDirectory(tempFile); // Associate with temp file
     tempFile->Write();  // Save to cache
   }
+
+  if (USE_BIN_AVERAGE) {
+      CalculateBinAverages(filteredTree);
+  }
   
   //Run Fitting Procedure on each region
   std::cout << "  Fitting Signal+Background Region..." << std::endl;
@@ -131,7 +170,7 @@ void MLM_Fitter::RunMhFitMLM(int obs2bn_idx){
   A_sigbkg[obs2bn_idx] = FitMLM(filteredTree,Mh_cut_sb);
 
   std::cout << "  Fitting Background Region..." << std::endl;
-  TCut* Mh_cut_b =  new TCut(("Mh>" + std::to_string(bkg_min) + " && Mh<" + std::to_string(bkg_max)).c_str());
+  TCut* Mh_cut_b =  new TCut(bkg_reg.c_str());
   A_bkg[obs2bn_idx] = FitMLM(filteredTree,Mh_cut_b);
 
   PurityCalc(filteredTree);
@@ -159,18 +198,18 @@ void MLM_Fitter::RunMxFitMLM(int obs2bn_idx){
   //define sigbkg and bkg region edges
   sigbkg_min = 0.85;
   sigbkg_max = 1.15;
-  bkg_min = 1.4;
-  bkg_max = 2.75;
+  bkg_reg = "1.4<Mx&&Mx<2.75";
 
   //define Rho Mh cut
   double Mh_min = 0.65;
   double Mh_max = 0.9;
   
   //Pre-Cut the Tree for efficiency
-  TCut Diphoton_cut = TCut("Mdiphoton<0.16 && 0.115<Mdiphoton");
+  TCut Diphoton_cut = TCut("Mdiphoton<0.164 && 0.104<Mdiphoton");
   TCut Mh_cut = TCut(("Mh>" + std::to_string(Mh_min) + " && Mh<" + std::to_string(Mh_max)).c_str());
   TCut obs2_cut = TCut((OBS2 + ">" + std::to_string(OBS2BN[obs2bn_idx]) + " && " + OBS2 + "<" + std::to_string(OBS2BN[obs2bn_idx+1])).c_str());
-  TCut pre_cut = Diphoton_cut && Mh_cut && obs2_cut;
+  TCut MinPhoCut = TCut(("pho1_E>" + std::to_string(MinPhoEnergy) + " && " + std::to_string(MinPhoEnergy) + "<pho2_E").c_str());
+  TCut pre_cut = Diphoton_cut && Mh_cut && obs2_cut && MinPhoCut;
   
   // Create or open cached filtered tree
   std::cout << "  Creating/loading pre-filtered tree..." << std::endl;
@@ -180,7 +219,9 @@ void MLM_Fitter::RunMxFitMLM(int obs2bn_idx){
   std::string cache_filename = CACHE_DIR + "/filtered_tree_" + base_filename + "_" + FIT_TYPE + "_MxFit_obs2bin" + 
                                std::to_string(obs2bn_idx) + "_" + 
                                std::to_string(OBS2BN[obs2bn_idx]) + "_" + 
-                               std::to_string(OBS2BN[obs2bn_idx+1]) + ".root";
+                               std::to_string(OBS2BN[obs2bn_idx+1]) + "_" +
+                               "MinPhoE_" + std::to_string(MinPhoEnergy) +
+                               ".root";
   
   TFile* tempFile = nullptr;
   TTree* filteredTree = nullptr;
@@ -199,7 +240,11 @@ void MLM_Fitter::RunMxFitMLM(int obs2bn_idx){
     filteredTree->SetDirectory(tempFile); // Associate with temp file
     tempFile->Write();  // Save to cache
   }
-  
+
+  if (USE_BIN_AVERAGE) {
+    CalculateBinAverages(filteredTree);
+  }
+
   //Run Fitting Procedure on each region
   std::cout << "  Fitting Signal+Background Region..." << std::endl;
   
@@ -207,7 +252,7 @@ void MLM_Fitter::RunMxFitMLM(int obs2bn_idx){
   A_sigbkg[obs2bn_idx] = FitMLM(filteredTree,Mx_cut_sb);
 
   std::cout << "  Fitting Background Region..." << std::endl;
-  TCut* Mx_cut_b =  new TCut(("Mx>" + std::to_string(bkg_min) + " && Mx<" + std::to_string(bkg_max)).c_str());
+  TCut* Mx_cut_b =  new TCut(bkg_reg.c_str());
   A_bkg[obs2bn_idx] = FitMLM(filteredTree,Mx_cut_b);
 
   PurityCalc(filteredTree);
@@ -265,7 +310,7 @@ std::vector<std::pair<double,double>> MLM_Fitter::FitMLM(TTree* tree,TCut* bound
   
 
 
-    // Perform fit (suppress verbose output)
+    // Perform fit
     RooFitResult* fitResult = (RooFitResult*)model.fitTo(binned_data,
                                                          RooFit::PrintLevel(-1),
                                                          RooFit::Save(true));
@@ -307,29 +352,30 @@ void MLM_Fitter::PurityCalc_Mh(TTree* tree){
   //This implementation mirrors the Python purityCalc function
   
   std::cout << "Calculating Purity from Mh distribution..." << std::endl;
-  double lb = 0.4; //fitting bounds
-  double ub = 1.2;
+  double lb = 0.5; //fitting bounds
+  double ub = 1.25;
 
   //Create RooRealVar for Mh fitting 
   RooRealVar Mh("Mh", "Mh", lb, ub);
   RooRealVar obs(OBS.c_str(), OBS.c_str(), BN_EDGS.front(), BN_EDGS.back());
-  RooConstVar xmin("xmin","xmin",lb);
-  RooConstVar xmax("xmax","xmax",ub); //used in the background formula to map Mh range to -1,1 for better Chebychev fitting
   
   //Define fit parameters for signal (Voigtian)
-  RooRealVar mu("m_{0}", "mu", 0.8, 0.6, 1);
-  RooRealVar sigma("sigma_{sig}", "sigma", 0.06, 0.00001, 0.1);
-  RooRealVar gamma("#gamma", "#gamma", 0.15, 0.12, 0.16); //0.15 GeV is the FWHM of the rho meson based on PDG
+  RooRealVar mu("m_{0}", "#mu", 0.8, 0.6, 1);
+  RooRealVar sigma("sigma_{sig}", "#sigma", 0.06, 0.01, 0.1);
+  RooRealVar gamma("#gamma", "#gamma", 0.15, 0.145, 0.155); //0.15 GeV is the FWHM of the rho meson based on PDG
   
   //Define fit parameters for background (Chebychev polynomial)
-  RooRealVar p1("p1", "p1", 0, -2, 2);
-  RooRealVar p2("p2", "p2", 0, -2, 2);
-  RooRealVar p3("p3", "p3", 0,-2,2);
+  RooRealVar p1("p1", "p1", 0, -1, 1);
+  RooRealVar p2("p2", "p2", 0, -1, 1);
+  // RooRealVar p3("p3", "p3", 0,-1,1);
+
+  RooRealVar mu2("m02_", "#mu_bkg", 0.5, 0.02, 0.66);
+  RooRealVar sigma2("sigma2_", "#sigma_bkg", 0.05, 0.4, 0.59);
   
   //Create extended PDF parameters
   int nEntries = tree->GetEntries() /  BN_CENTERS.size(); //approximate number of entries per obs bin
-  RooRealVar N_sig("N_{sig}", "N_sig", nEntries*0.7, 0, nEntries*1.2);
-  RooRealVar N_bkg("N_{bkg}", "N_bkg", nEntries*0.3, 0, nEntries*1.2);
+  RooRealVar N_sig("N_{sig}", "N_{sig}", nEntries*0.7, 0, nEntries*1.2);
+  RooRealVar N_bkg("N_{bkg}", "N_{bkg}", nEntries*0.3, 0, nEntries*1.2);
   
   //Create signal PDF (Voigtian)
   std::string sig_name = "sig" + std::to_string(bn_idx);
@@ -337,11 +383,8 @@ void MLM_Fitter::PurityCalc_Mh(TTree* tree){
   
   //Create background PDF (Chebychev) 
   std::string bkg_name = "background" + std::to_string(bn_idx);
-  //Fit to a Chebychev centered around the rho peak
-  RooGenericPdf background(
-  bkg_name.c_str(),
-  "1 + p1*(2*(Mh - xmin)/(xmax - xmin)-1)+ p2*(2*(2*(Mh - xmin)/(xmax - xmin)-1)^2 - 1)+ p3*(4*(2*(Mh - xmin)/(xmax - xmin)-1)^3 - 3*(2*(Mh - xmin)/(xmax - xmin)-1))",
-  RooArgList(Mh, p1, p2,p3,xmin,xmax)); //
+  // RooGaussian background((bkg_name).c_str(), "Bkg Gauss", Mh, mu2, sigma2);
+  RooChebychev background((bkg_name).c_str(), "Bkg Cheby", Mh, RooArgList(p1, p2));
   
   //Combine signal and background into extended model
   RooArgList components(sig, background);
@@ -362,8 +405,11 @@ void MLM_Fitter::PurityCalc_Mh(TTree* tree){
     RooDataSet binned_data(dataset_name.c_str(), dataset_name.c_str(), RooArgSet(Mh,obs),
                        RooFit::Import(*tree),
                       RooFit::Cut(bin_cut));
-  
-
+    double N_total = binned_data.numEntries();
+    N_sig.setMax(N_total);
+    N_sig.setVal(N_total*0.7);
+    N_sig.setMax(N_total);
+    N_bkg.setVal(N_total*0.3);
 
     // Perform fit (suppress verbose output)
     RooFitResult* fit_results = model_ext.fitTo(binned_data,
@@ -554,6 +600,7 @@ void MLM_Fitter::PlotPurityGraph(RooDataSet& binned_data, RooRealVar& x,
   data_hist->GetXaxis()->SetTitle((std::string(x.GetName()) + " (GeV)").c_str());
   data_hist->GetYaxis()->SetTitle("Events");
   data_hist->SetStats(0);
+  data_hist->GetYaxis()->SetRangeUser(0, data_hist->GetMaximum() * 1.2);  // Set y-axis min to 0
   
   // Create TGraph objects by evaluating PDFs
   const int nPoints = 200;
@@ -569,7 +616,7 @@ void MLM_Fitter::PlotPurityGraph(RooDataSet& binned_data, RooRealVar& x,
   
   RooArgSet args(x);
   for (int i = 0; i < nPoints; i++) {
-    xPoints[i] = 0.4 + (1.7 - 0.4) * i / (nPoints - 1);
+    xPoints[i] = x.getMin() + (x.getMax() - x.getMin()) * i / (nPoints - 1);
     x.setVal(xPoints[i]);
     
     // Evaluate PDFs and scale by number of events and bin width
@@ -613,13 +660,13 @@ void MLM_Fitter::PlotPurityGraph(RooDataSet& binned_data, RooRealVar& x,
 
   //legend
   std::string leg_name = "legend_" + idx_str;
-  TLegend* leg = new TLegend(0.45, 0.55, 0.75, 0.85);
+  TLegend* leg = new TLegend(0.55, 0.55, 0.85, 0.85);
   leg->SetName(leg_name.c_str());
   leg->SetBorderSize(0);
   leg->AddEntry(data_hist, "Data", "p");
-  leg->AddEntry(total_graph, "Gauss+Cheby", "l");
-  leg->AddEntry(sig_graph, "Signal", "l");
-  leg->AddEntry(bkg_graph, "Background", "l");
+  leg->AddEntry(total_graph, "Sig+Bkg", "l");
+  leg->AddEntry(sig_graph, "Sig", "l");
+  leg->AddEntry(bkg_graph, "Bkg", "l");
 
   //text annotation
   std::string text_name = "text_" + idx_str;
@@ -627,7 +674,7 @@ void MLM_Fitter::PlotPurityGraph(RooDataSet& binned_data, RooRealVar& x,
   text->SetName(text_name.c_str());
   text->SetNDC(true);
   text->SetTextSize(0.06);
-  text->SetText(0.50, 0.45, Form("#splitline{u = %.4f #pm %.4f}{#chi^{2}/NDF: %.2f}", u, u_err, chi2NDF));
+  text->SetText(0.55, 0.45, Form("#splitline{u = %.2f #pm %.3f}{#chi^{2}/NDF: %.2f}", u, u_err, chi2NDF));
 
   //param box
   std::string param_box_name = "param_box_" + idx_str;
@@ -642,11 +689,11 @@ void MLM_Fitter::PlotPurityGraph(RooDataSet& binned_data, RooRealVar& x,
     RooRealVar* var = dynamic_cast<RooRealVar*>(arg);
     if (!var) continue;
     
-    TString name = var->GetName();
+    TString name = var->GetTitle();
     double val = var->getVal();
     double err = var->getError();
     if (name.Contains("N_{")) {
-      param_box->AddText(Form("%s: %.2e#pm%.2e", name.Data(), val, err));
+      param_box->AddText(Form("%s: %.1e#pm%.0f", name.Data(), val, err));
     } else {
       param_box->AddText(Form("%s: %.2f#pm%.2f", name.Data(), val, err));
     }
@@ -706,6 +753,7 @@ void MLM_Fitter::PlotToCanvas_PostageStamp(){
     c->cd(i + 1);
     gPad->SetRightMargin(0.25); // Make room for external parameter box
     purity_data_hists[i]->Draw();
+    purity_data_hists[i]->GetYaxis()->SetRangeUser(0, purity_data_hists[i]->GetMaximum() * 1.2);  // Force y-axis to start at 0
     purity_total_graphs[i]->Draw("L SAME");
     purity_sig_graphs[i]->Draw("L SAME");
     purity_bkg_graphs[i]->Draw("L SAME");

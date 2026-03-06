@@ -10,6 +10,7 @@
 #include <filesystem>
 
 //clas12root -l -b -q 'macros/AsymmetryFitting.cpp("pippi0_merged_in_pass2.root","pippi0_merged_in_pass2/","MhChi2","config/pippi0_RGAinbending_tbinning.txt",false)'
+//clas12root -l -b -q 'macros/AsymmetryFitting.cpp("pippi0_merged_pi0NoiseThreshold.root","pippi0_merged_pi0NoiseThreshold/","MhChi2","config/pippi0_RGAinbending_tbinning.txt",false)'
 //clas12root -l -b -q 'macros/AsymmetryFitting.cpp("pippi0_MC_in_45nA.root","pippi0_MC_in_45nA/","MhMLM","config/pippi0_RGAinbending_tbinning.txt",false)'
 //clas12root -l -b -q 'macros/AsymmetryFitting.cpp("pippi0_merged_in_pass2.root","pippi0_merged_in_pass2/","MhChi2","config/test_config.txt",false)'
 
@@ -41,6 +42,7 @@ int AsymmetryMLM(const char* file_name, const char* file_dir,
     std::vector<double> obs2bn = parse_csv_to_doubles(env.GetValue("obs2bn", ""));
     std::string out_base = env.GetValue("out_base", "./out/");
     std::string in_base = env.GetValue("in_base", "./out/");
+    double MinPhoEnergy = std::stod(env.GetValue("MinPhoEnergy", "0.2")); //GeV
     MLM_Fitter fitter(
         env.GetValue("treename", "pippi0"),
         (out_base + file_dir + "BSA_Plots/" + env.GetValue("obs", "z") + "/" + fit_type + "/").c_str(),
@@ -50,7 +52,8 @@ int AsymmetryMLM(const char* file_name, const char* file_dir,
         bn_edgs,
         obs2bn,
         fit_type,
-        rewrite_cache
+        rewrite_cache,
+        MinPhoEnergy
     );
     
     //Loop through obs2 bins and run MLM fitting based on the fit_type
@@ -139,6 +142,7 @@ int AsymmetryChi2(const char* file_name, const char* file_dir,
     std::vector<double> obs2bn = parse_csv_to_doubles(env.GetValue("obs2bn", ""));
     std::string out_base = env.GetValue("out_base", "./out/");
     std::string in_base = env.GetValue("in_base", "./out/");
+    double MinPhoEnergy = std::stod(env.GetValue("MinPhoEnergy", "0.2")); //GeV
     Chi2_Fitter fitter(
         env.GetValue("treename", "pippi0"),
         (out_base + file_dir + "BSA_Plots/" + env.GetValue("obs", "z") + "/" + fit_type + "/").c_str(),
@@ -149,7 +153,8 @@ int AsymmetryChi2(const char* file_name, const char* file_dir,
         bn_edgs,
         obs2bn,
         fit_type,
-        rewrite_cache
+        rewrite_cache,
+        MinPhoEnergy
     );
 
     //Loop through obs2 bins and run Chi2 fitting based on the fit_type

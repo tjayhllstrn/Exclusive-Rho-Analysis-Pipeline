@@ -14,7 +14,8 @@ class MLM_Fitter {
                    std::vector<double> bn_edgs,
                    std::vector<double> obs2bn,
                    std::string fit_type,
-                   bool rewrite_cache = false);
+                   bool rewrite_cache = false,
+                   double minPhoEnergy = 0.2);
 
     //Destructor
     ~MLM_Fitter();
@@ -34,8 +35,9 @@ class MLM_Fitter {
     TTree* RAW_TREE;
     double sigbkg_min;
     double sigbkg_max;
-    double bkg_min;
-    double bkg_max;
+    std::string bkg_reg; //string to hold the TCut for the bkg region
+    double MinPhoEnergy;
+    bool USE_BIN_AVERAGE;
     int bn_idx; //keeps track of what bin is being fit at any given time
     //RooDataSet* ptr_binned_data;
     double u;
@@ -73,6 +75,7 @@ class MLM_Fitter {
     void RunMxFitMLM(int obs2bn_idx);
     std::vector<std::pair<double,double>> FitMLM(TTree* tree,TCut* bounds);
     void Calc_A_sig_from_A_sigbkg(int obs2bn_idx);
+    void CalculateBinAverages(TTree* filteredTree);
 
     //Plotting Functions
     void PlotToCanvas_PostageStamp();

@@ -10,7 +10,7 @@ using namespace QA;
 
 
 //clas12root -l -b -q 'macros/hipo2tree_pippi0.C("/lustre24/expphy/cache/clas12/rg-a/production/recon/fall2018/torus-1/pass2/main/train/nSidis/nSidis_005032.hipo" , "out/pippi0_fall2018_in_pass2/nSidis_005032.root", -1)'
-//clas12root -l -b -q 'macros/hipo2tree_pippi0.C("/lustre24/expphy/cache/clas12/rg-a/production/recon/fall2018/torus-1/pass2/main/train/nSidis/nSidis_005032.hipo" , "out/test/nSidis_005032.root", -1)'
+//clas12root -l -b -q 'macros/hipo2tree_pippi0.C("/lustre24/expphy/cache/clas12/rg-a/production/recon/fall2018/torus-1/pass2/main/train/nSidis/nSidis_005036.hipo" , "out/test/nSidis_005036.root", -1)'
 
 //clas12root -l -b -q 'macros/hipo2tree_pippi0.C("/lustre24/expphy/cache/clas12/rg-a/production/recon/fall2018/torus-1/pass2/main/train/nSidis/nSidis_005036.hipo" , "out/pippi0_fall2018_in_pass2/nSidis_005036.root", -1)'
 
@@ -88,6 +88,9 @@ int hipo2tree_pippi0(const char* hipoFile = "",
     int _ievent = 0;
     int badAsym = 0;
 
+    //Also implement Iguana algorithm for GBT photon classifier filtering
+
+
     //now loop over the chain of events (chain becomes like on big hipofile) until we reach the max number of events. note: if maxEvents = -1, then it will run through the whole chain.
     while (_chain.Next() == true && (whileidx < maxEvents || maxEvents < 0)) {
         //this if statement just prints to the console every 10000 events. It also mentions if any events are skipped from the quality assurance check from QADB.
@@ -111,7 +114,12 @@ int hipo2tree_pippi0(const char* hipoFile = "",
             badAsym++;
             continue;
             }
-        } 
+            if(event_info.run == 6691){
+            badAsym++;
+            continue; // skip entire run 6691 due to false photons of one given energy in this run
+            }
+            }
+        
         // event_info.hel *= qa->CorrectHelicitySign(event_info.run,event_info.evnum);  //would take the place of ln36-37 in CLAS12Ana.C if it worked...
 
         //Now perform cuts

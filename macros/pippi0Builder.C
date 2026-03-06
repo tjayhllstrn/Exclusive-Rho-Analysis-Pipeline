@@ -80,9 +80,9 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
     treename = "pippi0";
     //make a tree with the name pippi0
     TTree *outtree = new TTree(treename.Data(),"Tree");
-    double z, pT, phih, Mx, xF, xF1, xF2, Mh,eps,gamma, Mdiphoton, th,cth,px_neutron,py_neutron,pz_neutron,sector_neutron,neutralhit_in_sector_neutron,pip_P;
+    double z, pT, phih, Mx, xF, xF1, xF2, Mh,eps,gamma, Mdiphoton, th,cth,px_neutron,py_neutron,pz_neutron,sector_neutron,neutralhit_in_sector_neutron,pip_P,pho1_E,pho2_E;
     double z_true, pT_true, phih_true, Mx_true, xF_true, xF1_true, xF2_true, Mh_true, Mdiphoton_true, th_true,cth_true,t_elec,px_neutron_true,py_neutron_true,pz_neutron_true,sector_neutron_true,pip_P_true;
-    double truepip_pid,truepho2_pid,truepho1_pid,trueelectron_pid,t_elec_true;
+    double truepip_pid,truepho2_pid,truepho1_pid,trueelectron_pid,t_elec_true,truepho1_E,truepho2_E;
     double MCphoparent_samepi0,MCpippi0parent_samerho,truepipparent_pid,truepipparent_id,truepho2parentparent_pid,truepho2parentparent_id,truepho2parent_pid;
     double truepho2parent_id,truepho1parentparent_pid,truepho1parentparent_id,truepho1parent_pid,truepho1parent_id;
     Mh=0;
@@ -128,6 +128,11 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
 
     outtree->Branch("pip_P", &pip_P, "pip_P/D");
     outtree->Branch("pip_P_true", &pip_P_true, "pip_P_true/D");
+    outtree->Branch("pho1_E", &pho1_E, "pho1_E/D");
+    outtree->Branch("pho2_E", &pho2_E, "pho2_E/D");
+    outtree->Branch("truepho1_E", &truepho1_E, "truepho1_E/D");
+    outtree->Branch("truepho2_E", &truepho2_E, "truepho2_E/D");
+
     outtree->Branch("truepho1_pid",&truepho1_pid,"truepho1_pid/D");
     outtree->Branch("truepho2_pid",&truepho2_pid,"truepho2_pid/D");
     outtree->Branch("truepip_pid",&truepip_pid,"truepip_pid/D");
@@ -196,7 +201,7 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
         }
         
         EventTree->GetEntry(ev);
-        //figure out if the even is MC or not and determine Beam energy based on run
+        //figure out if the event is MC or not and determine Beam energy based on run
         double eBeam = runBeamEnergy(run);
         TLorentzVector init_electron(0,0,sqrt(eBeam*eBeam-mE*mE),eBeam);
         if(abs(run)==11){
@@ -232,6 +237,18 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
         q = init_electron-electron;
         trueq = init_electron-trueelectron;
         trueelectron_pid = truepid[idx_e];
+
+        // Count charged particles in the event (ignoring electrons as these are likely a result of harmless background)
+        int nCharged = 0;
+        for(int i = 0; i < Nmax; i++){
+            int abspid = abs(pid[i]);
+            if(abspid == 211 || abspid == 2212 || 
+            abspid == 321 || abspid == 13) {
+                nCharged++;
+            }
+        }
+        // Skip if more than 1 charged particle (1 pip)
+        if(nCharged != 1) continue;
         
         for(int j = 0; j<Nmax;j++){
             if(pid[j]!=22)continue;
@@ -242,8 +259,10 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
             truepho1parent_pid = trueparentpid[j];
             truepho1parentparent_id = trueparentparentid[j];
             truepho1parentparent_pid = trueparentparentpid[j];
+            pho1_E = pho1.E();
+            truepho1_E = truepho1.E();
             for(int k = 0; k<Nmax;k++){
-                if(pid[k]!=22||k==j)continue;
+                if(pid[k]!=22||k<=j)continue;
                 pho2.SetPxPyPzE(px[k],py[k],pz[k],E[k]);
                 truepho2.SetPxPyPzE(truepx[k],truepy[k],truepz[k],trueE[k]);
                 truepho2_pid = truepid[k];
@@ -251,6 +270,8 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
                 truepho2parent_pid = trueparentpid[k];
                 truepho2parentparent_id = trueparentparentid[k];
                 truepho2parentparent_pid = trueparentparentpid[k];
+                pho2_E = pho2.E();
+                truepho2_E = truepho2.E();
                     for(int l = 0; l<Nmax;l++){
                         if(pid[l]!=211)continue;
                         pip.SetPxPyPzE(px[l],py[l],pz[l],E[l]);
@@ -258,7 +279,6 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
                         truepip_pid = truepid[l];
                         truepipparent_id = trueparentid[l];
                         truepipparent_pid = trueparentpid[l];
-
                         MCphoparent_samepi0 = 0;
                         MCpippi0parent_samerho = 0;
                         if(truepho1parent_id == truepho2parent_id && truepho1parent_pid ==111){
@@ -352,8 +372,8 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
                         xF2 = kin.xF(q,diphoton,init_target,W);
                         xF2_true = kin.xF(trueq,truediphoton,init_target,trueW);
                         
+                        gamma = 2*mp*x/sqrt(Q2);
                         eps=(1-y-pow(y*gamma,2)/4)/(1-y+pow(y,2)/2+pow(y*gamma,2)/4);
-                        gamma = 2*0.938272*x/sqrt(Q2);
 
                         th = kin.com_th(pip,diphoton);
                         th_true = kin.com_th(truepip,truediphoton);

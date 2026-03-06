@@ -13,7 +13,8 @@ Chi2_Fitter::Chi2_Fitter(const char* treename, const char* out_dir,
                 std::vector<double> bn_edgs,
                 std::vector<double> obs2bn,
                 std::string fit_type,
-                bool rewrite_cache)
+                bool rewrite_cache,
+                double minPhoEnergy)
     : TREENAME(treename),
     OUT_DIR(out_dir),
     OBS(obs_s),
@@ -24,8 +25,10 @@ Chi2_Fitter::Chi2_Fitter(const char* treename, const char* out_dir,
     OBS2BN(obs2bn),
     FIT_TYPE(fit_type),
     REWRITE_CACHE(rewrite_cache),
-    CACHE_DIR("/lustre24/expphy/volatile/clas12/users/tjhellst/cache")
+    CACHE_DIR("/lustre24/expphy/volatile/clas12/users/tjhellst/cache"),
+    MinPhoEnergy(minPhoEnergy) //GeV
     {
+        USE_BIN_AVERAGE = true; //default to using data-weighted bin averages for fitting, can be turned off to use geometric bin centers instead (for testing systematics)
         // suppress RooFit messages
         RooMsgService* rms = &RooMsgService::instance();
         rms->setSilentMode(true);
@@ -70,8 +73,8 @@ Chi2_Fitter::Chi2_Fitter(const char* treename, const char* out_dir,
         Chi2_values.resize(n_obs_bins, std::vector<std::pair<double, double>>(n_phi_bins));
         N_sig_fitting_paramboxes.resize(n_obs_bins, std::vector<std::pair<TPaveText*, TPaveText*>>(n_phi_bins));
         
-        //initialize SinCanvas for sin fit plots
-        SinCanvas = new TCanvas("SinCanvas", "Sin Fit Results", 1200, 800);
+        // initialize SinCanvas lazily per obs2 bin
+        SinCanvas = nullptr;
 
 
     }
@@ -79,8 +82,40 @@ Chi2_Fitter::Chi2_Fitter(const char* treename, const char* out_dir,
 //destructor
 Chi2_Fitter::~Chi2_Fitter(){
         if (SinCanvas) {
-        delete SinCanvas;
+            delete SinCanvas;
+            SinCanvas = nullptr;
+        }
+}
+
+void Chi2_Fitter::CalculateBinAverages(TTree* filteredTree) {
+    std::cout << "  Calculating data-weighted bin averages..." << std::endl;
+    
+    // Clear and resize the centers vectors
+    BN_CENTERS.clear();
+    BN_CENTERS.reserve(BN_EDGS.size() - 1);
+    
+    // Calculate OBS bin averages
+    for (size_t i = 0; i < BN_EDGS.size() - 1; ++i) {
+        TH1F hist("temp_obs_hist", "temp", 100, BN_EDGS[i], BN_EDGS[i+1]);
+        TCut bin_cut = TCut((OBS + ">" + std::to_string(BN_EDGS[i]) + " && " + OBS + "<" + std::to_string(BN_EDGS[i+1])).c_str());
+        filteredTree->Draw((OBS + ">>temp_obs_hist").c_str(), bin_cut, "goff");
+        
+        double bin_avg = hist.GetMean();
+        int entries = hist.GetEntries();
+        
+        // Fall back to geometric center if bin is empty
+        if (entries == 0 || bin_avg == 0) {
+            bin_avg = 0.5 * (BN_EDGS[i] + BN_EDGS[i+1]);
+            std::cout << "    Warning: Empty OBS bin [" << BN_EDGS[i] << ", " << BN_EDGS[i+1] 
+                      << "], using geometric center: " << bin_avg << std::endl;
+        } else {
+            std::cout << "    OBS bin [" << BN_EDGS[i] << ", " << BN_EDGS[i+1] 
+                      << "]: average = " << bin_avg << " (" << entries << " entries)" << std::endl;
+        }
+        
+        BN_CENTERS.push_back(bin_avg);
     }
+    
 }
 
 
@@ -93,20 +128,23 @@ void Chi2_Fitter::RunMhChi2Fit(int obs2bn_idx){
     double Mx_max = 1.05;
 
     //Pre-Cut the Tree for efficiency
-    TCut Diphoton_cut = TCut("Mdiphoton<0.16 && 0.115<Mdiphoton");
+    TCut Diphoton_cut = TCut("Mdiphoton<0.164 && 0.104<Mdiphoton");
     TCut Mx_cut = TCut(("Mx>" + std::to_string(Mx_min) + " && Mx<" + std::to_string(Mx_max)).c_str());
     TCut obs2_cut = TCut((OBS2 + ">" + std::to_string(OBS2BN[obs2bn_idx]) + " && " + OBS2 + "<" + std::to_string(OBS2BN[obs2bn_idx+1])).c_str());
-    TCut pre_cut = Diphoton_cut && Mx_cut && obs2_cut;
+    TCut MinPhoCut = TCut(("pho1_E>" + std::to_string(MinPhoEnergy) + " && " + std::to_string(MinPhoEnergy) + "<pho2_E").c_str());
+    TCut pre_cut = Diphoton_cut && Mx_cut && obs2_cut && MinPhoCut;
 
     // Create or open cached filtered tree
     std::cout << "  Creating/loading pre-filtered tree..." << std::endl;
     
-    // Generate unique filename based on input file, fit_type and obs2 bin
+    // Generate unique filename based on input file, fit_type, obs2 bin, and MinPhoEnergy
     std::string base_filename = GetBaseFilename(IN_FILE);
     std::string cache_filename = CACHE_DIR + "/filtered_tree_" + base_filename + "_" + FIT_TYPE + "_MhFit_obs2bin" + 
                                  std::to_string(obs2bn_idx) + "_" + 
                                  std::to_string(OBS2BN[obs2bn_idx]) + "_" + 
-                                 std::to_string(OBS2BN[obs2bn_idx+1]) + ".root";
+                                 std::to_string(OBS2BN[obs2bn_idx+1]) + "_" +
+                                 "MinPhoE_" + std::to_string(MinPhoEnergy) +
+                                 ".root";
     
     TFile* tempFile = nullptr;
     TTree* filteredTree = nullptr;
@@ -128,6 +166,9 @@ void Chi2_Fitter::RunMhChi2Fit(int obs2bn_idx){
 
     //plot binning scheme on filteredTree
     BinningSchemePlot(filteredTree);
+    if (USE_BIN_AVERAGE) {
+        CalculateBinAverages(filteredTree);
+    }
 
 
     //Run Fitting Procedure  for neg and pos helicity data
@@ -142,6 +183,12 @@ void Chi2_Fitter::RunMhChi2Fit(int obs2bn_idx){
     int n_plots = BN_EDGS.size() - 1;
     int cols = (int)TMath::Ceil(TMath::Sqrt(n_plots));
     int rows = (int)TMath::Ceil((double)n_plots / cols);
+    if (SinCanvas) {
+        delete SinCanvas;
+        SinCanvas = nullptr;
+    }
+    std::string canvas_name = "SinCanvas_" + std::to_string(obs2bn_idx);
+    SinCanvas = new TCanvas(canvas_name.c_str(), "Sin Fit Results", 1200, 800);
     SinCanvas->Divide(cols, rows);
 
     //calculate A using polarization and N_sig values
@@ -161,8 +208,11 @@ void Chi2_Fitter::RunMhChi2Fit(int obs2bn_idx){
     }
     
     
+    SinCanvas->Modified();
+    SinCanvas->Update();
     SinCanvas->SaveAs((OUT_DIR + "SinFits.png").c_str());
-    SinCanvas->Clear("D");
+    delete SinCanvas;
+    SinCanvas = nullptr;
     tempFile->Close();
     delete tempFile;
     delete neg_hel;
@@ -171,17 +221,18 @@ void Chi2_Fitter::RunMhChi2Fit(int obs2bn_idx){
 
 void Chi2_Fitter::RunMxChi2Fit(int obs2bn_idx){
     using namespace RooFit;
-    std::cout<<"\033[0;32mRunning Mh chi2 phibinning Fit\033[0m\n"<<std::endl;
+    std::cout<<"\033[0;32mRunning Mx chi2 phibinning Fit\033[0m\n"<<std::endl;
     
     //define Rho cut
     double Mh_min = 0.65;
     double Mh_max = 0.9;
 
     //Pre-Cut the Tree for efficiency
-    TCut Diphoton_cut = TCut("Mdiphoton<0.16 && 0.115<Mdiphoton");
+    TCut Diphoton_cut = TCut("Mdiphoton<0.164 && 0.104<Mdiphoton");
     TCut Mh_cut = TCut(("Mh>" + std::to_string(Mh_min) + " && Mh<" + std::to_string(Mh_max)).c_str());
     TCut obs2_cut = TCut((OBS2 + ">" + std::to_string(OBS2BN[obs2bn_idx]) + " && " + OBS2 + "<" + std::to_string(OBS2BN[obs2bn_idx+1])).c_str());
-    TCut pre_cut = Diphoton_cut && Mh_cut && obs2_cut;
+    TCut MinPhoCut = TCut(("pho1_E>" + std::to_string(MinPhoEnergy) + " && " + std::to_string(MinPhoEnergy) + "<pho2_E").c_str());
+    TCut pre_cut = Diphoton_cut && Mh_cut && obs2_cut && MinPhoCut;
 
     // Create or open cached filtered tree
     std::cout << "  Creating/loading pre-filtered tree..." << std::endl;
@@ -191,7 +242,9 @@ void Chi2_Fitter::RunMxChi2Fit(int obs2bn_idx){
     std::string cache_filename = CACHE_DIR + "/filtered_tree_" + base_filename + "_" + FIT_TYPE + "_MxFit_obs2bin" + 
                                  std::to_string(obs2bn_idx) + "_" + 
                                  std::to_string(OBS2BN[obs2bn_idx]) + "_" + 
-                                 std::to_string(OBS2BN[obs2bn_idx+1]) + ".root";
+                                 std::to_string(OBS2BN[obs2bn_idx+1]) + "_" +
+                                 "MinPhoE_" + std::to_string(MinPhoEnergy) +
+                                 ".root";
     
     TFile* tempFile = nullptr;
     TTree* filteredTree = nullptr;
@@ -211,6 +264,11 @@ void Chi2_Fitter::RunMxChi2Fit(int obs2bn_idx){
         tempFile->Write();
     }
 
+    // Calculate bin centers (either geometric or data-weighted average)
+    if (USE_BIN_AVERAGE) {
+        CalculateBinAverages(filteredTree);
+    }
+    
     //plot binning scheme on filteredTree
     BinningSchemePlot(filteredTree);
 
@@ -226,6 +284,12 @@ void Chi2_Fitter::RunMxChi2Fit(int obs2bn_idx){
     int n_plots = BN_EDGS.size() - 1;
     int cols = (int)TMath::Ceil(TMath::Sqrt(n_plots));
     int rows = (int)TMath::Ceil((double)n_plots / cols);
+    if (SinCanvas) {
+        delete SinCanvas;
+        SinCanvas = nullptr;
+    }
+    std::string canvas_name = "SinCanvas_" + std::to_string(obs2bn_idx);
+    SinCanvas = new TCanvas(canvas_name.c_str(), "Sin Fit Results", 1200, 800);
     SinCanvas->Divide(cols, rows);
 
     //calculate A using polarization and N_sig values
@@ -245,8 +309,11 @@ void Chi2_Fitter::RunMxChi2Fit(int obs2bn_idx){
     }
 
 
+    SinCanvas->Modified();
+    SinCanvas->Update();
     SinCanvas->SaveAs((OUT_DIR + "SinFits.png").c_str());
-    SinCanvas->Clear("D");
+    delete SinCanvas;
+    SinCanvas = nullptr;
     tempFile->Close();
     delete tempFile;
     delete neg_hel;
@@ -306,8 +373,8 @@ std::vector<std::vector<std::pair<double, double>>> Chi2_Fitter::FitChi2(TTree* 
 
 std::pair<double,double> Chi2_Fitter::Mh_sig_fit(TTree* binnedTree, TCut bin_cut,int helicity){
     //Define RooFit Variables
-    double lb = 0.4; //fitting bounds
-    double ub = 1.2;
+    double lb = 0.5; //fitting bounds
+    double ub = 1.25;
 
 
     // Create unique suffix for all RooFit objects to prevent parameter contamination between bins
@@ -326,61 +393,42 @@ std::pair<double,double> Chi2_Fitter::Mh_sig_fit(TTree* binnedTree, TCut bin_cut
     //Define fit parameters for signal (Gaussian)
     RooRealVar mu(("m0_" + idx).c_str(), "#mu", 0.78, 0.75, 0.9);
     // RooRealVar sigma(("sigma_" + idx).c_str(), "#sigma", 0.06, 0.001, 0.3);
-    RooRealVar sigma(("sigma_" + idx).c_str(), "#sigma", 0.06, 0.01, 0.1);
+    RooRealVar sigma(("sigma_" + idx).c_str(), "#sigma", 0.06, 0.01, 0.09);
     RooRealVar gamma(("gamma_" + idx).c_str(), "#gamma", 0.15, 0.145, 0.155);
 
-    RooRealVar mu2(("m02_" + idx).c_str(), "#mu_bkg", 0.5, 0.45, 0.55);
-    RooRealVar sigma2(("sigma2_" + idx).c_str(), "#sigma_bkg", 0.06, 0.01, 0.1);
+    RooRealVar mu2(("m02_" + idx).c_str(), "#mu_bkg", 0.5, 0.02, 0.66);
+    RooRealVar sigma2(("sigma2_" + idx).c_str(), "#sigma_bkg", 0.05, 0.4, 0.59);
 
     //Define fit parameters for background (Chebychev polynomial)
-    RooRealVar p1(("p1_" + idx).c_str(), "p1", 0, -2, 2);
-    RooRealVar p2(("p2_" + idx).c_str(), "p2", 0, -2, 2);
-    RooRealVar p3(("p3_" + idx).c_str(), "p3", 0, -2, 2);
+    RooRealVar p1(("p1_" + idx).c_str(), "p1", 0, -1, 1);
+    RooRealVar p2(("p2_" + idx).c_str(), "p2", 0, -1, 1);
+    // RooRealVar p3(("p3_" + idx).c_str(), "p3", 0, -1, 1);
+    // RooRealVar p4(("p4_" + idx).c_str(), "p4", 0, -2, 2);
     
     RooRealVar N_sig(("Nsig_" + idx).c_str(), "N_sig", N_total*0.7, 100, N_total);
     RooRealVar N_bkg_cheby(("Nbkg_cheby_" + idx).c_str(), "N_cheby", N_total*0.3, 50, N_total);
-    //RooRealVar N_bkg_gauss(("Nbkg_gauss_" + idx).c_str(), "N_gauss", N_total*0.05, 10, N_total);
+    RooRealVar N_bkg_gauss(("Nbkg_gauss_" + idx).c_str(), "N_gauss", N_total*0.05, 10, N_total);
 
     
     //Define Roo Fitting Models
     RooVoigtian sig(("sig_" + idx).c_str(), "Sig", Mh, mu, gamma, sigma);
-    //Fit to a Chebychev centered around the rho peak
-    RooChebychev bkg_chebychev(("bkh_chebychev_" + idx).c_str(), "Bkg", Mh, RooArgList(p1, p2,p3));
-
-    //Add a Gaussian component to the background via a RooGenericPdf
-    //RooGaussian bkg_gaus(("bkg_gaus_" + idx).c_str(), "Bkg Gauss", Mh, mu2, sigma2);
+    RooChebychev bkg_chebychev(("bkg_chebychev_" + idx).c_str(), "Bkg", Mh, RooArgList(p1, p2));
+    RooGaussian bkg_gaus(("bkg_gaus_" + idx).c_str(), "Bkg Gauss", Mh, mu2, sigma2);
     // RooGenericPdf background(("background" + idx).c_str(),
     //                                    "@0 + @1",
     //                                    RooArgList(bkg_chebychev, bkg_gaus));
 
     RooAddPdf model_ext(("model_ext_" + idx).c_str(), "Sig + Bkg", RooArgList(sig, bkg_chebychev), RooArgList(N_sig, N_bkg_cheby));
     
-
-
-    // print initial parameters to console
-    // std::cout << "        Initial Fit Parameters" << std::endl;
-    // std::cout << "N_sig: " << N_sig.getVal() << std::endl;
-    // std::cout << "N_bkg: " << N_bkg.getVal() << std::endl;
-    // std::cout << "mu: " << mu.getVal() << std::endl;
-    // std::cout << "sigma: " << sigma.getVal() << std::endl;
-    // std::cout << "gamma: " << gamma.getVal() << std::endl;
-    // std::cout << "p1: " << p1.getVal() << std::endl;
-    // std::cout << "p2: " << p2.getVal() << std::endl;
-    // std::cout << "p3: " << p3.getVal() << std::endl;
+    if (binned_data.numEntries() < 100) {
+    std::cout << "WARNING: Low Statistics" << std::endl;
+    }
     
     RooFitResult* fit_results = model_ext.fitTo(binned_data,
                                                RooFit::Save(true),
-                                               RooFit::PrintLevel(-1),
-                                               RooFit::Extended(true));
-
-    // //Calculate N_sig based on N_bkg and N_tot
-    // double N_sig_val = N_total - N_bkg.getVal();
-    // // Error propagation: sigma_Nsig = sqrt(sigma_Nbkg^2)
-    // double N_sig_err = N_bkg.getError();
+                                               RooFit::PrintLevel(-1)); //,RooFit::Extended(true)
 
     //Plot fit result. use helicity to assign graph to right entry in the pair
-    //fit_results->correlationMatrix().Print();
-      // Create TGraph objects by evaluating PDFs
     const int nPoints = 200;
     double* xPoints = new double[nPoints];
     double* yTotal = new double[nPoints];
@@ -389,7 +437,7 @@ std::pair<double,double> Chi2_Fitter::Mh_sig_fit(TTree* binnedTree, TCut bin_cut
     
     
     // Calculate bin width for proper normalization
-    int bin_number = 75;
+    int bin_number = 50;
     double binWidth = (Mh.getMax() - Mh.getMin()) / bin_number;
     RooArgSet args(Mh);
     for (int i = 0; i < nPoints; i++) {
@@ -399,11 +447,11 @@ std::pair<double,double> Chi2_Fitter::Mh_sig_fit(TTree* binnedTree, TCut bin_cut
         // Evaluate PDFs and scale by number of events and bin width
         double sig_val = sig.getVal(args) * N_sig.getVal() * binWidth;
         double bkg_cheby_val = bkg_chebychev.getVal(args) * N_bkg_cheby.getVal() * binWidth;
-        //double bkg_gauss_val = bkg_gaus.getVal(args) * N_bkg_gauss.getVal() * binWidth;
+        double bkg_gauss_val = bkg_gaus.getVal(args) * N_bkg_gauss.getVal() * binWidth;
         
         ySig[i] = sig_val;
-        yBkg[i] = bkg_cheby_val;
-        yTotal[i] = sig_val + bkg_cheby_val;
+        yBkg[i] =  bkg_cheby_val; //bkg_gauss_val; //
+        yTotal[i] = sig_val + bkg_cheby_val; // + bkg_gauss_val;
     }
     PlotSigFitGraph(binned_data, Mh, xPoints, ySig, yBkg,yTotal, model_ext, helicity, bin_number);
     
@@ -416,9 +464,26 @@ std::pair<double,double> Chi2_Fitter::Mx_sig_fit(TTree* binnedTree, TCut bin_cut
     // Create unique suffix for all RooFit objects to prevent parameter contamination between bins
     std::string idx = std::to_string(obs_bin_idx) + "_" + std::to_string(phi_bin_idx) + "_" + std::to_string(helicity);
 
-    RooRealVar Mx("Mx", "Mx", 0.6, 1.7); 
-    RooRealVar mu_sig(("mu_sig_" + idx).c_str(), "#mu", 0.94, 0.85, 1.2);
-    RooRealVar sigma_sig(("sigma_sig_" + idx).c_str(), "#sigma", 0.06, 0.01, 0.13);
+    // Scale Mx min/max values based on obs_bin_idx if OBS == "t_elec"
+    double Mx_min_val = 0.55;
+    double Mx_max_val = 1.3;
+    
+    if (OBS == "t_elec") {
+        int n_obs_bins = BN_EDGS.size() - 1;
+        double step_fraction = (n_obs_bins > 1) ? (double)obs_bin_idx / (n_obs_bins - 1) : 0.0;
+        
+        double min_start = 0.7;
+        double min_end = 0.5;
+        double max_start = 1.6;
+        double max_end = 1.2;
+        
+        Mx_min_val = min_start - step_fraction * (min_start - min_end);
+        Mx_max_val = max_start - step_fraction * (max_start - max_end);
+    }
+    std::cout<<"MX Fitting range: "<<Mx_min_val<<" to "<<Mx_max_val<<std::endl;
+    RooRealVar Mx("Mx", "Mx", Mx_min_val, Mx_max_val); 
+    RooRealVar mu_sig(("mu_sig_" + idx).c_str(), "#mu", 0.94, 0.92, 1.00);
+    RooRealVar sigma_sig(("sigma_sig_" + idx).c_str(), "#sigma", 0.06, 0.02, 0.13);
     //Define fit parameters for background (Chebychev polynomial)
     RooRealVar p1(("p1_" + idx).c_str(), "p1", 0, -2, 2);
     RooRealVar p2(("p2_" + idx).c_str(), "p2", 0, -2, 2);
@@ -485,37 +550,39 @@ void Chi2_Fitter::CalcA(TTree* filteredTree, int obs_bin_idx, int phi_bin_idx){
     double N_sig_neg_err = N_sig_neg[obs_bin_idx][phi_bin_idx].second;
 
     //find avg polarization for this bin
-    // TH1F hist1("hist1","hist1",200,0,1);
-    // TH1F hist2("hist2","hist2",200,0,1);
-    // TCut bin_cut = TCut((OBS + ">" + std::to_string(BN_EDGS[obs_bin_idx]) + " && " + OBS + "<" + std::to_string(BN_EDGS[obs_bin_idx+1]) +
-    //                      " && phi>" + std::to_string(PHIBN_EDGES[phi_bin_idx]) + " && phi<" + std::to_string(PHIBN_EDGES[phi_bin_idx+1])).c_str());
-    // filteredTree->Draw("Pol>>hist1",bin_cut,"goff");
-    // double Pol_avg = hist1.GetMean();
-    // double Pol_stdv = hist1.GetStdDev();
-    // double Pol_N_hist = hist1.GetEntries();
-    // double Pol_avg_err = Pol_stdv / sqrt(Pol_N_hist);
-    // filteredTree->Draw("eps>>hist2",bin_cut,"goff");
-    // double eps_avg = hist2.GetMean();
-    // double eps_stdv = hist2.GetStdDev();
-    // double eps_N_hist = hist2.GetEntries();
-    // double eps_avg_err = eps_stdv / sqrt(eps_N_hist);
-    // double depol = sqrt(2*eps_avg*(1-eps_avg));
-    // double depol_err = eps_avg_err*(1-2*eps_avg) / depol;
+    TH1F hist1("hist1","hist1",200,0,1);
+    TH1F hist2("hist2","hist2",200,0,1);
+    TCut bin_cut = TCut((OBS + ">" + std::to_string(BN_EDGS[obs_bin_idx]) + " && " + OBS + "<" + std::to_string(BN_EDGS[obs_bin_idx+1]) +
+                         " && phi>" + std::to_string(PHIBN_EDGES[phi_bin_idx]) + " && phi<" + std::to_string(PHIBN_EDGES[phi_bin_idx+1])).c_str());
+    filteredTree->Draw("Pol>>hist1",bin_cut,"goff");
+    double Pol_avg = hist1.GetMean();
+    double Pol_stdv = hist1.GetStdDev();
+    double Pol_N_hist = hist1.GetEntries();
+    double Pol_avg_err = Pol_stdv / sqrt(Pol_N_hist);
+    filteredTree->Draw("eps>>hist2",bin_cut,"goff");
+    double eps_avg = hist2.GetMean();
+    double eps_stdv = hist2.GetStdDev();
+    double eps_N_hist = hist2.GetEntries();
+    double eps_avg_err = eps_stdv / sqrt(eps_N_hist);
+    double depol = sqrt(2*eps_avg*(1-eps_avg));
+    double depol_err = eps_avg_err*(1-2*eps_avg) / depol;
 
     //Calculate A
     double denom = N_sig_pos_val + N_sig_neg_val;
-    // double A_val = (1/Pol_avg) * (1/depol) * (N_sig_pos_val - N_sig_neg_val) / denom ;
-    double A_val = (N_sig_pos_val - N_sig_neg_val) / denom ;
+    
+    double A_val = (1/Pol_avg) * (1/depol) * (N_sig_pos_val - N_sig_neg_val) / denom ;
+    // double A_val = (N_sig_pos_val - N_sig_neg_val) / denom ;
     
     //Propagate error (assuming independent errors on N_sig, Pol, and eps)
-    // double dA_dNp = (1/Pol_avg)*(1/depol)*2.0*N_sig_neg_val/(denom*denom);
-    // double dA_dNm = -(1/Pol_avg)*(1/depol)*2.0*N_sig_pos_val/(denom*denom);
-    // double dA_dpol = -(1/Pol_avg)*A_val;
-    // double dA_depol = -(1/depol)*A_val;
-    // double A_err = sqrt(pow(dA_dNp * N_sig_pos_err,2) + pow(dA_dNm * N_sig_neg_err,2)+pow(dA_dpol * Pol_avg_err,2) + pow(dA_depol * depol_err,2));
-    double dA_dNp = 2.0*N_sig_neg_val/(denom*denom);
-    double dA_dNm = 2.0*N_sig_pos_val/(denom*denom);
-    double A_err = sqrt(pow(dA_dNp * N_sig_pos_err,2) + pow(dA_dNm * N_sig_neg_err,2));
+    double dA_dNp = (1/Pol_avg)*(1/depol)*2.0*N_sig_neg_val/(denom*denom);
+    double dA_dNm = -(1/Pol_avg)*(1/depol)*2.0*N_sig_pos_val/(denom*denom);
+    double dA_dpol = -(1/Pol_avg)*A_val;
+    double dA_depol = -(1/depol)*A_val;
+    double A_err = sqrt(pow(dA_dNp * N_sig_pos_err,2) + pow(dA_dNm * N_sig_neg_err,2)+pow(dA_dpol * Pol_avg_err,2) + pow(dA_depol * depol_err,2));
+    
+    // double dA_dNp = 2.0*N_sig_neg_val/(denom*denom);
+    // double dA_dNm = 2.0*N_sig_pos_val/(denom*denom);
+    // double A_err = sqrt(pow(dA_dNp * N_sig_pos_err,2) + pow(dA_dNm * N_sig_neg_err,2));
 
 
     //Store A value 
@@ -548,26 +615,26 @@ void Chi2_Fitter::FitToSin(std::vector<double>& x_vals,std::vector<std::pair<dou
     double chi2ndf = chi2 / ndf;
 
     //calculate A_sig = amplitude / depolarization*Pol factor
-    TH1F hist1 = TH1F("hist1","hist1",200,0,1);
-    TH1F hist2 = TH1F("hist2","hist2",200,0,1);
-    TCut bin_cut = TCut((OBS + ">" + std::to_string(BN_EDGS[obs_bin_idx]) + " && " + OBS + "<" + std::to_string(BN_EDGS[obs_bin_idx+1])).c_str());
-    filteredTree->Draw("Pol>>hist1",bin_cut,"goff");
-    double Pol_avg = hist1.GetMean();
-    double Pol_stdv = hist1.GetStdDev();
-    double Pol_N_hist = hist1.GetEntries();
-    double Pol_avg_err = Pol_stdv / sqrt(Pol_N_hist);
-    filteredTree->Draw("eps>>hist2",bin_cut,"goff");
-    double eps_avg = hist2.GetMean();
-    double eps_stdv = hist2.GetStdDev();
-    double eps_N_hist = hist2.GetEntries();
-    double eps_avg_err = eps_stdv / sqrt(eps_N_hist);
-    double depol = sqrt(2*eps_avg*(1-eps_avg));
-    double depol_err = eps_avg_err*(1-2*eps_avg) / depol;
+    // TH1F hist1 = TH1F("hist1","hist1",200,0,1);
+    // TH1F hist2 = TH1F("hist2","hist2",200,0,1);
+    // TCut bin_cut = TCut((OBS + ">" + std::to_string(BN_EDGS[obs_bin_idx]) + " && " + OBS + "<" + std::to_string(BN_EDGS[obs_bin_idx+1])).c_str());
+    // filteredTree->Draw("Pol>>hist1",bin_cut,"goff");
+    // double Pol_avg = hist1.GetMean();
+    // double Pol_stdv = hist1.GetStdDev();
+    // double Pol_N_hist = hist1.GetEntries();
+    // double Pol_avg_err = Pol_stdv / sqrt(Pol_N_hist);
+    // filteredTree->Draw("eps>>hist2",bin_cut,"goff");
+    // double eps_avg = hist2.GetMean();
+    // double eps_stdv = hist2.GetStdDev();
+    // double eps_N_hist = hist2.GetEntries();
+    // double eps_avg_err = eps_stdv / sqrt(eps_N_hist);
+    // double depol = sqrt(2*eps_avg*(1-eps_avg));
+    // double depol_err = eps_avg_err*(1-2*eps_avg) / depol;
     
     gr->SetMarkerStyle(20);  // Common visible marker
     gr->SetMarkerSize(1);
     gr->GetXaxis()->SetTitle("#phi_{h}");
-    gr->GetYaxis()->SetRangeUser(-0.3,0.3);
+    gr->GetYaxis()->SetRangeUser(-0.5,0.5);
     gr->GetYaxis()->SetTitle("A_{LU}");
     gr->Draw("AP");
     fitFunc->Draw("same");
@@ -580,11 +647,15 @@ void Chi2_Fitter::FitToSin(std::vector<double>& x_vals,std::vector<std::pair<dou
     latex->DrawLatex(0.57,0.15, Form("amp = %.3f #pm %.3f", amplitude, amplitude_err));
 
     //calculate FLU and FLU error and store final results
-    double FLU = amplitude / (depol * Pol_avg);
-    double dFLU_damp = 1.0 / (depol * Pol_avg);
-    double dFLU_dpol = -amplitude / (depol * Pol_avg * Pol_avg);
-    double dFLU_depol = -amplitude / (depol * depol * Pol_avg);
-    double FLU_err = sqrt( pow(dFLU_damp * amplitude_err,2) + pow(dFLU_dpol * Pol_avg_err,2) + pow(dFLU_depol * depol_err,2) );
+    // double FLU = amplitude / (depol * Pol_avg);
+    // double dFLU_damp = 1.0 / (depol * Pol_avg);
+    // double dFLU_dpol = -amplitude / (depol * Pol_avg * Pol_avg);
+    // double dFLU_depol = -amplitude / (depol * depol * Pol_avg);
+    // double FLU_err = sqrt( pow(dFLU_damp * amplitude_err,2) + pow(dFLU_dpol * Pol_avg_err,2) + pow(dFLU_depol * depol_err,2) );
+    
+    double FLU = amplitude;
+    double FLU_err = amplitude_err;
+
     A_sig[obs_bin_idx] =  std::make_pair(FLU, FLU_err);
 
     SinCanvas->Update();
