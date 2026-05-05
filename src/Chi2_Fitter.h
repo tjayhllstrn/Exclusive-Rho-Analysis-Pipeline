@@ -41,6 +41,7 @@ class Chi2_Fitter {
     int obs2_bin_idx;
     double MinPhoEnergy;
     bool USE_BIN_AVERAGE;
+    bool USE_UNBINNED_SIG_FIT;
 
     //data structs for managing results
     std::vector<std::vector<std::pair<double, double>>> N_sig_pos; //vector indexed by [obs bin, phibin] holding pairs of (N_sig, N_sig_err)
@@ -66,6 +67,7 @@ class Chi2_Fitter {
     void CalculateBinAverages(TTree* filteredTree);
     std::vector<std::vector<std::pair<double, double>>> FitChi2(TTree* filteredTree,TCut* neg_hel, int helicity);
     std::pair<double,double> Mh_sig_fit(TTree* filteredTree, TCut bin_cut, int helicity);
+    std::pair<double,double> Mh_sig_fit_histogram(TTree* binnedTree, TCut bin_cut,int helicity);
     std::pair<double,double> Mx_sig_fit(TTree* filteredTree, TCut bin_cut, int helicity);
     void CalcA(TTree* filteredTree, int obs_bin_idx, int phi_bin_idx);
     void FitToSin(std::vector<double>& x_vals, std::vector<std::pair<double,double>>& y, int obs_bin_idx, TTree* filteredTree);
@@ -75,6 +77,7 @@ class Chi2_Fitter {
     void PlotToCanvas_N_sig_BarHist();
     void PlotSigFitGraph(RooDataSet& binned_data, RooRealVar& x, double xPoints[200],
                                      double ySig[200], double yBkg[200], double yTotal[200], RooAddPdf& model_ext, int helicity,int bin_number);
+    void PlotSigFitGraph(TH1F& data_hist, TF1& fit_func, int helicity);
     double CalculateChi2(TH1F* data_hist, TGraph* fit_graph);
     void PlotToCanvas_PostageStamp(std::vector<TH1F*>& data_hists,
                                             std::vector<TGraph*>& total_graphs,

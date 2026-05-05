@@ -3,6 +3,7 @@
 #include <typeinfo>
 #include <string>
 #include <stdexcept>
+#include <cstring>
 
 //constructor
 Chi2_Fitter::Chi2_Fitter(const char* treename, const char* out_dir,
@@ -29,6 +30,7 @@ Chi2_Fitter::Chi2_Fitter(const char* treename, const char* out_dir,
     MinPhoEnergy(minPhoEnergy) //GeV
     {
         USE_BIN_AVERAGE = true; //default to using data-weighted bin averages for fitting, can be turned off to use geometric bin centers instead (for testing systematics)
+        USE_UNBINNED_SIG_FIT = false; //default uses unbinned signal fit using RooFit, set fault to fit to a histogram using Root.fit
         // suppress RooFit messages
         RooMsgService* rms = &RooMsgService::instance();
         rms->setSilentMode(true);
@@ -348,9 +350,20 @@ std::vector<std::vector<std::pair<double, double>>> Chi2_Fitter::FitChi2(TTree* 
             TCut bin_cut = TCut((OBS + ">" + std::to_string(obs_min) + " && " + OBS + "<" + std::to_string(obs_max) +
                                  " && phi>" + std::to_string(phimin) + " && phi<" + std::to_string(phimax)).c_str());
             if (FIT_TYPE.find("Mh") != std::string::npos){
-                N_sig_results[i][j] = Mh_sig_fit(final_tree, bin_cut, helicity);
+                if (USE_UNBINNED_SIG_FIT) {
+                    N_sig_results[i][j] = Mh_sig_fit(final_tree, bin_cut, helicity);
+                } else {
+                    // If not using unbinned fit, fall back to histogram-based fit
+                    N_sig_results[i][j] = Mh_sig_fit_histogram(final_tree, bin_cut, helicity);
+                }
             }
             else if (FIT_TYPE.find("Mx") != std::string::npos){
+                if (USE_UNBINNED_SIG_FIT) {
+                    N_sig_results[i][j] = Mx_sig_fit(final_tree, bin_cut, helicity);
+                } else {
+                    std::cerr << "Warning: Histogram signal fit not implemented for Mx. Falling back to unbinned fit." << std::endl;
+                    N_sig_results[i][j] = Mx_sig_fit(final_tree, bin_cut, helicity);
+                }
                 N_sig_results[i][j] = Mx_sig_fit(final_tree, bin_cut, helicity);
             }
             else{
@@ -369,6 +382,45 @@ std::vector<std::vector<std::pair<double, double>>> Chi2_Fitter::FitChi2(TTree* 
 
   return N_sig_results;
 
+}
+std::pair<double,double> Chi2_Fitter::Mh_sig_fit_histogram(TTree* binnedTree, TCut bin_cut,int helicity){
+    // Define fitting bounds
+    double lb = 0.5; // GeV
+    double ub = 1.25; // GeV
+
+    // Create histogram for this bin
+    TH1F hist("temp_hist", "temp", 100, lb, ub);
+    binnedTree->Draw("Mh>>temp_hist", bin_cut, "goff");
+    
+    // Fit histogram with Voigtian signal + Chebychev background
+    TF1 fit_func("fit_func", "[0]*TMath::Voigt((x-[1]), [2], [3]) + [4]*([5]*x + [6]*(2*x*x - 1))", lb, ub);
+    
+    // Set initial parameter values and limits
+    fit_func.SetParameters(hist.GetMaximum()*0.7, 0.78, 0.06, 0.15, hist.GetMaximum()*0.3,0,0); // Initial guesses
+    fit_func.SetParLimits(0, 1, hist.GetMaximum()); // N_sig
+    fit_func.SetParLimits(1, 0.75, 0.9); // mu
+    fit_func.SetParLimits(2, 0.01, 0.09); // sigma
+    fit_func.SetParLimits(3, 0.145, 0.155); // gamma
+    fit_func.SetParLimits(4, 1, hist.GetMaximum()); // N_bkg
+    fit_func.SetParLimits(5, -1, 1); // Cheby coeff 1
+    fit_func.SetParLimits(6, -1, 1); // Cheby coeff 2
+
+    fit_func.SetParName(0, "N_sig");
+    fit_func.SetParName(1, "mu");
+    fit_func.SetParName(2, "sigma");
+    fit_func.SetParName(3, "gamma");
+    fit_func.SetParName(4, "N_bkg");
+    fit_func.SetParName(5, "c1");
+    fit_func.SetParName(6, "c2");
+
+    hist.Fit(&fit_func, "RQ"); 
+
+    double N_sig = fit_func.GetParameter(0);
+    double N_sig_err = fit_func.GetParError(0);
+
+    PlotSigFitGraph(hist, fit_func, helicity); 
+
+    return std::make_pair(N_sig, N_sig_err);
 }
 
 std::pair<double,double> Chi2_Fitter::Mh_sig_fit(TTree* binnedTree, TCut bin_cut,int helicity){
@@ -457,6 +509,64 @@ std::pair<double,double> Chi2_Fitter::Mh_sig_fit(TTree* binnedTree, TCut bin_cut
     
     std::pair<double,double> N_sig_result(N_sig.getVal(), N_sig.getError());
     return N_sig_result;
+}
+
+std::pair<double,double> Chi2_Fitter::Mx_sig_fit_histogram(TTree* binnedTree, TCut bin_cut,int helicity){
+    //NOT FINISHED YET
+    // Define fitting bounds
+    // Scale Mx min/max values based on obs_bin_idx if OBS == "t_elec"
+    double Mx_min_val = 0.55;
+    double Mx_max_val = 1.3;
+    
+    if (OBS == "t_elec") {
+        int n_obs_bins = BN_EDGS.size() - 1;
+        double step_fraction = (n_obs_bins > 1) ? (double)obs_bin_idx / (n_obs_bins - 1) : 0.0;
+        
+        double min_start = 0.7;
+        double min_end = 0.5;
+        double max_start = 1.6;
+        double max_end = 1.2;
+        
+        Mx_min_val = min_start - step_fraction * (min_start - min_end);
+        Mx_max_val = max_start - step_fraction * (max_start - max_end);
+    }
+     std::cout<<"MX Fitting range: "<<Mx_min_val<<" to "<<Mx_max_val<<std::endl;
+     double lb = Mx_min_val;
+     double ub = Mx_max_val;
+
+    // Create histogram for this bin
+    TH1F hist("temp_hist", "temp", 100, lb, ub);
+    binnedTree->Draw("Mx>>temp_hist", bin_cut, "goff");
+    
+    // Fit histogram with Voigtian signal + Chebychev background
+    TF1 fit_func("fit_func", "gaus((x-[1]), [2]) + [4]*([5]*x + [6]*(2*x*x - 1))", lb, ub);
+    
+    // Set initial parameter values and limits
+    fit_func.SetParameters(hist.GetMaximum()*0.7, 0.78, 0.06, 0.15, hist.GetMaximum()*0.3,0,0); // Initial guesses
+    fit_func.SetParLimits(0, 1, hist.GetMaximum()); // N_sig
+    fit_func.SetParLimits(1, 0.75, 0.9); // mu
+    fit_func.SetParLimits(2, 0.01, 0.09); // sigma
+    fit_func.SetParLimits(3, 0.145, 0.155); // gamma
+    fit_func.SetParLimits(4, 1, hist.GetMaximum()); // N_bkg
+    fit_func.SetParLimits(5, -1, 1); // Cheby coeff 1
+    fit_func.SetParLimits(6, -1, 1); // Cheby coeff 2
+
+    fit_func.SetParName(0, "N_sig");
+    fit_func.SetParName(1, "mu");
+    fit_func.SetParName(2, "sigma");
+    fit_func.SetParName(3, "gamma");
+    fit_func.SetParName(4, "N_bkg");
+    fit_func.SetParName(5, "c1");
+    fit_func.SetParName(6, "c2");
+
+    hist.Fit(&fit_func, "RQ"); 
+
+    double N_sig = fit_func.GetParameter(0);
+    double N_sig_err = fit_func.GetParError(0);
+
+    PlotSigFitGraph(hist, fit_func, helicity); 
+
+    return std::make_pair(N_sig, N_sig_err);
 }
 
 std::pair<double,double> Chi2_Fitter::Mx_sig_fit(TTree* binnedTree, TCut bin_cut,int helicity){
@@ -758,6 +868,137 @@ void Chi2_Fitter::PlotToCanvas_N_sig_BarHist() {
     }
     Nasym_c->SaveAs((OUT_DIR + OBS + "_Nsig_Asymmetry_BarHist.png").c_str());
     delete Nasym_c;
+}
+void Chi2_Fitter::PlotSigFitGraph(TH1F& data_hist, TF1& fit_func, int helicity){
+    // Create unique index string from current bin indices
+    std::string idx_str = std::to_string(obs_bin_idx) + "_" + std::to_string(phi_bin_idx);
+
+    const int nPoints = 200;
+    double* xPoints = new double[nPoints];
+    double* yTotal = new double[nPoints];
+    double* ySig = new double[nPoints];
+    double* yBkg = new double[nPoints];
+
+    double xmin = data_hist.GetXaxis()->GetXmin();
+    double xmax = data_hist.GetXaxis()->GetXmax();
+    double sig_norm = fit_func.GetParameter(0);
+    double mu = fit_func.GetParameter(1);
+    double sigma = fit_func.GetParameter(2);
+    double gamma = fit_func.GetParameter(3);
+    double bkg_norm = fit_func.GetParameter(4);
+    double p1 = fit_func.GetParameter(5);
+    double p2 = fit_func.GetParameter(6);
+
+    for (int i = 0; i < nPoints; ++i) {
+        xPoints[i] = xmin + (xmax - xmin) * i / (nPoints - 1);
+        yTotal[i] = fit_func.Eval(xPoints[i]);
+        ySig[i] = sig_norm * TMath::Voigt(xPoints[i]-mu, sigma, gamma);
+        yBkg[i] = (xPoints[i] * p1 + (2*xPoints[i]*xPoints[i] - 1) * p2) * bkg_norm; 
+    }
+
+    // Clone the provided data histogram to detach ownership
+    std::string hist_name = std::string("data_hist_") + idx_str;
+    TH1F* data_hist_clone = (TH1F*)data_hist.Clone(hist_name.c_str());
+    data_hist_clone->SetDirectory(0);
+    data_hist_clone->SetTitle(data_hist.GetTitle());
+    data_hist_clone->SetMarkerStyle(20);
+    data_hist_clone->SetMarkerSize(0.5);
+    data_hist_clone->GetXaxis()->SetTitle(data_hist.GetXaxis()->GetTitle());
+    data_hist_clone->GetYaxis()->SetTitle("Events");
+    data_hist_clone->SetStats(0);
+
+    // Create graphs
+    std::string total_graph_name = "totalFit_" + idx_str;
+    std::string sig_graph_name = "sigFit_" + idx_str;
+    std::string bkg_graph_name = "bkgFit_" + idx_str;
+
+    TGraph* total_graph = new TGraph(nPoints, xPoints, yTotal);
+    total_graph->SetName(total_graph_name.c_str());
+    total_graph->SetLineStyle(kDashed);
+    total_graph->SetLineColor(kBlack);
+    total_graph->SetLineWidth(2);
+
+    TGraph* sig_graph = new TGraph(nPoints, xPoints, ySig);
+    sig_graph->SetName(sig_graph_name.c_str());
+    sig_graph->SetLineColor(kBlue);
+    sig_graph->SetLineWidth(2);
+
+    TGraph* bkg_graph = new TGraph(nPoints, xPoints, yBkg);
+    bkg_graph->SetName(bkg_graph_name.c_str());
+    bkg_graph->SetLineColor(kRed);
+    bkg_graph->SetLineWidth(2);
+
+    double chi2NDF = CalculateChi2(data_hist_clone, total_graph);
+
+    // Legend
+    std::string leg_name = "legend_" + idx_str;
+    TLegend* leg = new TLegend(0.55, 0.55, 0.85, 0.85);
+    leg->SetName(leg_name.c_str());
+    leg->SetBorderSize(0);
+    leg->AddEntry(data_hist_clone, "Data", "p");
+    leg->AddEntry(total_graph, "fit", "l");
+    leg->AddEntry(sig_graph, "Signal", "l");
+    leg->AddEntry(bkg_graph, "Background", "l");
+
+    // Text annotation
+    std::string text_name = "text_" + idx_str;
+    std::string text = (helicity == -1) ? "Helicity: -1" : "Helicity: +1";
+    TLatex* txt = new TLatex();
+    txt->SetName(text_name.c_str());
+    txt->SetNDC(true);
+    txt->SetTextSize(0.06);
+    txt->SetText(0.50, 0.47, Form("#splitline{%s}{#chi^{2}/NDF: %.2f}", text.c_str(), chi2NDF));
+
+    // Parameter box from TF1 parameters
+    std::string param_box_name = "param_box_" + idx_str;
+    TPaveText* param_box = new TPaveText(0.75, 0.15, 1, 0.85, "NDC");
+    param_box->SetName(param_box_name.c_str());
+    param_box->SetFillColor(0);
+    param_box->SetBorderSize(0);
+    param_box->SetTextAlign(12);
+    param_box->SetTextSize(0.055);
+    int npar = fit_func.GetNpar();
+    for (int ip = 0; ip < npar; ++ip) {
+        const char* pname = fit_func.GetParName(ip);
+        double pval = fit_func.GetParameter(ip);
+        double perr = fit_func.GetParError(ip);
+        if (pname && strlen(pname) > 0) {
+            param_box->AddText(Form("%s: %.3g #pm %.3g", pname, pval, perr));
+        } else {
+            param_box->AddText(Form("p%d: %.3g #pm %.3g", ip, pval, perr));
+        }
+    }
+
+    // Store objects in member vectors according to helicity
+    if (helicity == -1) {
+        N_sig_fitting_datathist[obs_bin_idx][phi_bin_idx].second = data_hist_clone;
+        N_sig_fitting_totalgraph[obs_bin_idx][phi_bin_idx].second = total_graph;
+        N_sig_fitting_siggraph[obs_bin_idx][phi_bin_idx].second = sig_graph;
+        N_sig_fitting_bkggraph[obs_bin_idx][phi_bin_idx].second = bkg_graph;
+        N_sig_fitting_legends[obs_bin_idx][phi_bin_idx].second = leg;
+        N_sig_fitting_texts[obs_bin_idx][phi_bin_idx].second = txt;
+        Chi2_values[obs_bin_idx][phi_bin_idx].second = chi2NDF;
+        N_sig_fitting_paramboxes[obs_bin_idx][phi_bin_idx].second = param_box;
+    }
+    else if (helicity == 1) {
+        N_sig_fitting_datathist[obs_bin_idx][phi_bin_idx].first = data_hist_clone;
+        N_sig_fitting_totalgraph[obs_bin_idx][phi_bin_idx].first = total_graph;
+        N_sig_fitting_siggraph[obs_bin_idx][phi_bin_idx].first = sig_graph;
+        N_sig_fitting_bkggraph[obs_bin_idx][phi_bin_idx].first = bkg_graph;
+        N_sig_fitting_legends[obs_bin_idx][phi_bin_idx].first = leg;
+        N_sig_fitting_texts[obs_bin_idx][phi_bin_idx].first = txt;
+        Chi2_values[obs_bin_idx][phi_bin_idx].first = chi2NDF;
+        N_sig_fitting_paramboxes[obs_bin_idx][phi_bin_idx].first = param_box;
+    } else {
+        delete[] xPoints; delete[] yTotal; delete[] ySig; delete[] yBkg;
+        throw std::invalid_argument("Helicity must be -1 or 1");
+    }
+
+    // Clean up temporary arrays
+    delete[] xPoints;
+    delete[] yTotal;
+    delete[] ySig;
+    delete[] yBkg;
 }
 
 void Chi2_Fitter::PlotSigFitGraph(RooDataSet& binned_data, RooRealVar& x, double xPoints[200],
