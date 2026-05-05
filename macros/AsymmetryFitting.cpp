@@ -11,7 +11,7 @@
 
 //clas12root -l -b -q 'macros/AsymmetryFitting.cpp("pippi0_merged_in_pass2.root","pippi0_merged_in_pass2/","MhChi2","config/pippi0_RGAinbending_tbinning.txt",false)'
 //clas12root -l -b -q 'macros/AsymmetryFitting.cpp("pippi0_merged_pi0NoiseThreshold.root","pippi0_merged_pi0NoiseThreshold/","MhChi2","config/pippi0_RGAinbending_tbinning.txt",false)'
-//clas12root -l -b -q 'macros/AsymmetryFitting.cpp("pippi0_MC_in_45nA.root","pippi0_MC_in_45nA/","MhMLM","config/pippi0_RGAinbending_tbinning.txt",false)'
+//clas12root -l -b -q 'macros/AsymmetryFitting.cpp("pippi0_MC_in_fa18_45nA.root","pippi0_MC_in_fa18_45nA/","MhMLM","config/pippi0_RGAinbending_tbinning.txt",false)'
 //clas12root -l -b -q 'macros/AsymmetryFitting.cpp("pippi0_merged_in_pass2.root","pippi0_merged_in_pass2/","MhChi2","config/test_config.txt",false)'
 
 // helper: parse a comma-separated string into doubles

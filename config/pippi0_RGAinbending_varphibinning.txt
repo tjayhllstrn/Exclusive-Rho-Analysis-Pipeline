@@ -1,11 +1,11 @@
 treename pippi0
 out_base ./out/
 in_base ./out/
-obs xF
+obs varphi
 obs2 cth
 MinPhoEnergy 0.2
 
-bn_edgs 0.11, 0.25, 0.34, 0.41, 0.47, 0.52, 0.56, 0.61, 0.65, 0.7
+bn_edgs -3.14,-2,-1,0,1,2,3.14
 phibn_edges -3.14,-2.36,-1.57,-0.79,0,0.79,1.57,2.36,3.14
 obs2bn -1,1
 

@@ -117,6 +117,22 @@ double Kinematics::phi_h(TLorentzVector Q, TLorentzVector L, TLorentzVector p){
   return factor1*acos(factor2);
 }
 
+double Kinematics::varphi(TLorentzVector Q, TLorentzVector p1, TLorentzVector p2){ //be sure p1 is pip
+  TLorentzVector ph = p1 + p2;
+
+  TVector3 q(Q.Px(), Q.Py(), Q.Pz());
+  TVector3 Ph(ph.Px(), ph.Py(), ph.Pz());
+  TVector3 P1(p1.Px(), p1.Py(), p1.Pz());
+  TVector3 P2(p2.Px(), p2.Py(), p2.Pz());
+
+  TVector3 p1crossp2 = P1.Cross(P2);
+  TVector3 qcrossPh = q.Cross(Ph);
+  double factor1 = (qcrossPh*P1)/abs(qcrossPh*P1);
+  double factor2 = (p1crossp2*qcrossPh)/p1crossp2.Mag()/qcrossPh.Mag();
+
+  return factor1*acos(factor2);
+}
+
 double Kinematics::xF(TLorentzVector q, TLorentzVector p, TLorentzVector init_target, double W){
   TLorentzVector com = q+init_target;
   TVector3 comBOOST = com.BoostVector();

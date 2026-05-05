@@ -3,7 +3,7 @@ out_base ./out/
 in_base ./out/
 obs z
 obs2 cth
-MinPhoEnergy 0.3
+MinPhoEnergy 0.2
 
 bn_edgs 0.66,0.74,0.79,0.82,0.85,0.88,0.91,0.93,0.96,1
 phibn_edges -3.14,-2.36,-1.57,-0.79,0,0.79,1.57,2.36,3.14

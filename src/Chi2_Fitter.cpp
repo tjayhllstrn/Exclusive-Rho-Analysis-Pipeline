@@ -139,7 +139,7 @@ void Chi2_Fitter::RunMhChi2Fit(int obs2bn_idx){
     
     // Generate unique filename based on input file, fit_type, obs2 bin, and MinPhoEnergy
     std::string base_filename = GetBaseFilename(IN_FILE);
-    std::string cache_filename = CACHE_DIR + "/filtered_tree_" + base_filename + "_" + FIT_TYPE + "_MhFit_obs2bin" + 
+    std::string cache_filename = CACHE_DIR + "/filtered_tree_" + base_filename + "_" + FIT_TYPE + "_MhFit_" + OBS2 + "bin" + 
                                  std::to_string(obs2bn_idx) + "_" + 
                                  std::to_string(OBS2BN[obs2bn_idx]) + "_" + 
                                  std::to_string(OBS2BN[obs2bn_idx+1]) + "_" +
@@ -239,7 +239,7 @@ void Chi2_Fitter::RunMxChi2Fit(int obs2bn_idx){
     
     // Generate unique filename based on input file, fit_type and obs2 bin
     std::string base_filename = GetBaseFilename(IN_FILE);
-    std::string cache_filename = CACHE_DIR + "/filtered_tree_" + base_filename + "_" + FIT_TYPE + "_MxFit_obs2bin" + 
+    std::string cache_filename = CACHE_DIR + "/filtered_tree_" + base_filename + "_" + FIT_TYPE + "_MxFit_" + OBS2 + "bin" + 
                                  std::to_string(obs2bn_idx) + "_" + 
                                  std::to_string(OBS2BN[obs2bn_idx]) + "_" + 
                                  std::to_string(OBS2BN[obs2bn_idx+1]) + "_" +

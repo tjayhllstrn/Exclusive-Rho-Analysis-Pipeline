@@ -135,7 +135,7 @@ bool CutManager::apply_pion_cuts(part particle, part electron){
 // Apply all relevant photon cuts
 bool CutManager::apply_photon_cuts(part particle, part electron){
   if(minEpcal(particle)==false) return false;
-  if(photonMinEtot(particle)==false) return false;
+  // if(photonMinEtot(particle)==false) return false;
   if(photonElectronAngle(particle,electron)==false) return false;
   if(photonBetaCut(particle)==false) return false;
   if(caloEdges(particle,0)==false) return false;

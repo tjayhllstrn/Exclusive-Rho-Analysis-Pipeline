@@ -26,6 +26,7 @@ class Kinematics {
   static double Pt_COM(TLorentzVector, TLorentzVector, TLorentzVector);
   static double phi_h(TLorentzVector,TLorentzVector,TLorentzVector,TLorentzVector);
   static double phi_h(TLorentzVector,TLorentzVector,TLorentzVector);
+  static double varphi(TLorentzVector, TLorentzVector, TLorentzVector);
   static double phi_R(TLorentzVector,TLorentzVector,TLorentzVector,TLorentzVector, int);
   static double com_th(TLorentzVector, TLorentzVector);
   static double z(TLorentzVector, TLorentzVector, TLorentzVector);

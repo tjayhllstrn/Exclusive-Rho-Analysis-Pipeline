@@ -2,7 +2,7 @@
 #include "../src/Kinematics.C"
 #include "../src/TreeManager.C"
 
-//clas12root -l -b -q 'macros/pippi0Builder.C("out/pippi0_spring2019_in_pass2_pipP_lt_1_25/nSidis_006618.root")'
+//clas12root -l -b -q 'macros/pippi0Builder.C("out/pippi0_spring2019_in_pass2/nSidis_006618.root")'
 //clas12root -l -b -q 'macros/pippi0Builder.C("out/pippi0_MC_in_50nA/clasdis_rga_fa18_inb_50nA_10604MeV-0208.root")'
 //clas12root -l -b -q 'macros/pippi0Builder.C("out/MC_pippi0_fall2018_in_pass2/clasdis_rga_fa18_inb_45nA_10604MeV-0001.root")'
 
@@ -82,6 +82,8 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
     TTree *outtree = new TTree(treename.Data(),"Tree");
     double z, pT, phih, Mx, xF, xF1, xF2, Mh,eps,gamma, Mdiphoton, th,cth,px_neutron,py_neutron,pz_neutron,sector_neutron,neutralhit_in_sector_neutron,pip_P,pho1_E,pho2_E;
     double z_true, pT_true, phih_true, Mx_true, xF_true, xF1_true, xF2_true, Mh_true, Mdiphoton_true, th_true,cth_true,t_elec,px_neutron_true,py_neutron_true,pz_neutron_true,sector_neutron_true,pip_P_true;
+    double varphi,cosvarphi;
+    double truevarphi, truecosvarphi;
     double truepip_pid,truepho2_pid,truepho1_pid,trueelectron_pid,t_elec_true,truepho1_E,truepho2_E;
     double MCphoparent_samepi0,MCpippi0parent_samerho,truepipparent_pid,truepipparent_id,truepho2parentparent_pid,truepho2parentparent_id,truepho2parent_pid;
     double truepho2parent_id,truepho1parentparent_pid,truepho1parentparent_id,truepho1parent_pid,truepho1parent_id;
@@ -164,6 +166,11 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
     outtree->Branch("py_neutron_true",&py_neutron_true,"py_neutron_true/D");
     outtree->Branch("pz_neutron_true",&pz_neutron_true,"pz_neutron_true/D");
     outtree->Branch("sector_neutron_true",&sector_neutron_true,"sector_neutron_true/D");
+
+    outtree->Branch("varphi",&varphi,"varphi/D");
+    outtree->Branch("cosvarphi",&cosvarphi,"cosvarphi/D");
+    outtree->Branch("truevarphi",&truevarphi,"truevarphi/D");
+    outtree->Branch("truecosvarphi",&truecosvarphi,"truecosvarphi/D");
 
     //for leftover particles in the event:
     const int Nmax_leftover = 96;  // 100 - 4 particles you use
@@ -380,6 +387,10 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
 
                         cth = cos(th);
                         cth_true = cos(th);
+                        varphi = kin.varphi(q,pip,diphoton);
+                        truevarphi = kin.varphi(trueq,truepip,truediphoton);
+                        cosvarphi = cos(varphi);
+                        truecosvarphi = cos(truevarphi);
 
                         t_elec = kin.t_lep(electron,init_electron,dihadron);
                         t_elec_true = kin.t_lep(trueelectron,init_electron,truedihadron);

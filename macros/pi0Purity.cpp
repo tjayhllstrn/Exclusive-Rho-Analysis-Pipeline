@@ -7,7 +7,7 @@
 #include "../src/PurityFitter.h"
 #include "../src/PurityFitter.cpp"
 
-//clas12root -l -b -q 'macros/pi0Purity.cpp("out/pippi0_fall2018_pi0NoiseThreshold","pippi0_fall2018_pi0NoiseThreshold")'
+//clas12root -l -b -q 'macros/pi0Purity.cpp("out/pippi0_fall2018_in_pass2","nSidis_00503*.root")'
 
 void CalculatePurity(const char* input_dir, const char* inFile_pattern,bool REWRITE_CACHE = false){
     //set variables:
@@ -15,7 +15,7 @@ void CalculatePurity(const char* input_dir, const char* inFile_pattern,bool REWR
     std::string OBS2 = "cth";
     std::string OBS2_min = "-1";
     std::string OBS2_max = "1";
-    std::vector<double> MinPhoE_Cuts = {0.0,0.05,0.1,0.15, 0.2,0.25, 0.3, 0.35, 0.4}; // Min Pho Cuts to fit (in GeV)
+    std::vector<double> MinPhoE_Cuts = {0.05,0.1,0.15, 0.2,0.25, 0.3, 0.35, 0.4}; // Min Pho Cuts to fit (in GeV)
 
 
 
@@ -35,14 +35,18 @@ void CalculatePurity(const char* input_dir, const char* inFile_pattern,bool REWR
     }
     const size_t nMatchedFiles = glob_result.gl_pathc;
     globfree(&glob_result);
+    
+    if (chain->GetEntries() == 0) {
+        std::cerr << "Error: No entries found in the TChain. Please check your input directory and file pattern: " << pattern << std::endl;
+        return;
+    }
     std::cout<<"Input TChain has " << chain->GetEntries() << " entries from " << nMatchedFiles << " files." << std::endl;
-
     //pre-cut the tree 
     TCut Mx_cut = TCut("0.85<Mx&&Mx<1.05");
     TCut RhoCut = TCut("0.65<Mh&&Mh<0.9");
     TCut obs2_cut = TCut((OBS2 + ">" + OBS2_min + " && " + OBS2 + "<" + OBS2_max).c_str());
-    TCut pre_cut = RhoCut && obs2_cut;
-    std::string pre_cut_name = "Mx_Rho_cth"; //"Rho_cth" "MxCut" "Mx_Rho_cth" "Mx_Rho_cth_noGBT"
+    TCut pre_cut = Mx_cut && obs2_cut;
+    std::string pre_cut_name = "Mx_cth"; //"Rho_cth" "MxCut" "Mx_Rho_cth" "Mx_Rho_cth_noGBT"
     // Create or open cached filtered tree
     std::cout << "  Creating/loading pre-filtered tree..." << std::endl;
     std::string safe_cache_ID = std::string(input_dir) + "_" + std::string(inFile_pattern);

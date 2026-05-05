@@ -9,7 +9,7 @@ running=0
 
 mkdir -p logs
 
-for file in "$DIR"/*.root; do
+for file in "$DIR"/nSidis_0067*.root; do
     echo clas12root -l -b -q "macros/pippi0Builder.C(\"$file\")"
     log="logs/$(basename "$file" .root).log"
     nohup clas12root -l -b -q "macros/pippi0Builder.C(\"$file\")" \
