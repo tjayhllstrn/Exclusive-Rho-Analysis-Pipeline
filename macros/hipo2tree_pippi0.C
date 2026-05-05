@@ -6,6 +6,7 @@
 #include "../src/Structs.h"
 #include "../src/Kinematics.C"
 #include "QADB.h"
+#include <iguana/algorithms/clas12/PhotonGBTFilter/Algorithm.h>
 using namespace QA;
 
 
@@ -39,7 +40,7 @@ int hipo2tree_pippi0(const char* hipoFile = "",
     _config_c12->addAtLeastPid(211, 1); // at least one pi plus
     _config_c12->addAtLeastPid(22, 2); // at least 2 photons (pi0 decay products)
 
-    //generate the object that contains all the information for the desired events
+    //generate a reference to the object that contains all the information for the desired events
     auto& _c12 = _chain.C12ref();
     
     // Check if "rg-a" is present in the hipoFile path
@@ -89,7 +90,15 @@ int hipo2tree_pippi0(const char* hipoFile = "",
     int badAsym = 0;
 
     //Also implement Iguana algorithm for GBT photon classifier filtering
-
+    iguana::clas12::PhotonGBTFilter photon_filter;
+    photon_filter.SetConfigFile("macros/config/GBT_config.yaml"); 
+    photon_filter.Start();
+    //Defines a lambda function that will be used when _chain.Next() is called.
+    auto GBT_filter_lambda = [&photon_filter] (clas12::clas12reader* r) -> bool {
+        if(!photon_filter.Run(r->getRECParticle(), r->getRECCalorimeter(),r->getRUNconfig())) return false;
+        return true;
+    };
+    _c12->SetReadAction(GBT_filter_lambda); // Set the lambda function as the read action for the chain, so it will be called for each event read from the hipo files
 
     //now loop over the chain of events (chain becomes like on big hipofile) until we reach the max number of events. note: if maxEvents = -1, then it will run through the whole chain.
     while (_chain.Next() == true && (whileidx < maxEvents || maxEvents < 0)) {
@@ -166,6 +175,7 @@ int hipo2tree_pippi0(const char* hipoFile = "",
     treeReco->Write();
     fOut->Close();
 
+    photon_filter.Stop();
 
     // Now put together the photon-tree for MLInput
     

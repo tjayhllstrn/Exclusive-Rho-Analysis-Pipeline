@@ -1,0 +1,5 @@
+clas12::PhotonGBTFilter:
+  # which cook
+  pass: 1
+  # minimum value to qualify a photon as 'true'
+  threshold: 0.78
