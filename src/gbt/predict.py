@@ -56,6 +56,7 @@ def predict(rootfile="",
     # Write the TTree and close the TFile
     tree.Write(tree_name,1) # the "1" forces an overwrite of the previous ttree
     tfile.Close()
+    print(f"Finished predicting for {rootfile} with model {model_path} and tree {tree_name}")
         
 if __name__ == "__main__":
     #takes in the inputs and puts them into a list to be flattened into the predict function when run

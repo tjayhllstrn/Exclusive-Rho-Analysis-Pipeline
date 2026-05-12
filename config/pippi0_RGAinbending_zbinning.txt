@@ -1,6 +1,6 @@
 treename pippi0
 out_base ./out/
-in_base ./out/
+in_base /volatile/clas12/users/tjhellst/ExclusiveRhoPlus_RGA_processedData/
 obs z
 obs2 cth
 MinPhoEnergy 0.2

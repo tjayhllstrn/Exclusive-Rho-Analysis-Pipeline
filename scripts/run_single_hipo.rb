@@ -8,11 +8,8 @@ GREEN  = "\e[1;32m"
 YELLOW = "\e[1;33m"
 RED    = "\e[1;31m"
 
-# ruby scripts/run_single_hipo.rb --type pippi0 --input /lustre24/expphy/cache/clas12/rg-a/production/recon/fall2018/torus-1/pass2/main/train/nSidis/nSidis_005038.hipo --outdir out/pippi0_fall2018_pi0NoiseThreshold -n -1
-# ruby /w/hallb-scshelf2102/clas12/users/tjhellst/clas-ana-scaffold-tyler/scripts/run_single_hipo.rb --type pippi0 --input /lustre24/expphy/cache/clas12/rg-a/production/recon/fall2018/torus-1/pass2/main/train/nSidis/nSidis_005032.hipo --outdir out/test -n -1
 
-# ruby /w/hallb-scshelf2102/clas12/users/tjhellst/clas-ana-scaffold-tyler/scripts/run_single_hipo.rb --type pippi0 --input /lustre24/expphy/cache/clas12/rg-a/production/recon/fall2018/torus-1/pass2/main/train/nSidis/nSidis_005036.hipo --outdir out/pippi0_fall2018_in_pass2 -n -1
-# ruby /w/hallb-scshelf2102/clas12/users/tjhellst/clas-ana-scaffold-tyler/scripts/run_single_hipo.rb --type pippi0 --input /lustre24/expphy/cache/clas12/rg-a/production/recon/fall2018/torus-1/pass2/main/train/nSidis/nSidis_005036.hipo --outdir out/test -n -1
+# ruby scripts/run_single_hipo.rb --type pippi0 --input /lustre24/expphy/cache/clas12/rg-a/production/recon/fall2018/torus-1/pass2/main/train/nSidis/nSidis_005036.hipo --outdir out/test -n -1
 
 # ruby scripts/run_single_hipo.rb --type pippi0 --input /lustre24/expphy/cache/clas12/rg-a/production/montecarlo/clasdis_pass2/fa18_inb/clasdis_rga_fa18_inb_50nA_10604MeV-0197.hipo --outdir out/pippi0_MC_in_50nA -n -1
 # ruby /w/hallb-scshelf2102/clas12/users/tjhellst/clas-ana-scaffold-tyler/scripts/run_single_hipo.rb --type pippi0 --input /lustre24/expphy/cache/clas12/rg-a/production/montecarlo/clasdis_pass2/fa18_inb/clasdis_rga_fa18_inb_45nA_10604MeV-0001.hipo --outdir out/test -n -1
@@ -118,7 +115,7 @@ if (type == 'pi0'||type=='pippi0')
   end
 
     #Choosing the model to run the ML algorithm on'
-  model_name = "model_rga_pass1_#{model_type}"
+  model_name = "model_rga_pass2_#{model_type}"
   model_path = File.join('src/gbt/models', model_name)
     #run the gbt_cmd on the recently outputted root file from step 1. Working on the Event Tree
   gbt_cmd = %Q[python3 src/gbt/predict.py "#{out}" "#{model_path}" "EventTree"]

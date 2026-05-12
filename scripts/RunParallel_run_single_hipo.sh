@@ -12,7 +12,7 @@ mkdir -p logs
 
 source ~/.Exclusive-Rho-Analysis-Pipeline/bin/activate
 
-for file in "$INDIR"/*45nA*03*.hipo; do
+for file in "$INDIR"/nSidis_0050*.hipo; do
     echo ruby scripts/run_single_hipo.rb --type pippi0 --input "$file" --outdir "$OUTDIR" -n -1
     log="logs/$(basename "$file" .hipo).log"
     nohup ruby scripts/run_single_hipo.rb --type pippi0 --input "$file" --outdir "$OUTDIR" -n -1 \

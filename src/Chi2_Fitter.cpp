@@ -30,7 +30,7 @@ Chi2_Fitter::Chi2_Fitter(const char* treename, const char* out_dir,
     MinPhoEnergy(minPhoEnergy) //GeV
     {
         USE_BIN_AVERAGE = true; //default to using data-weighted bin averages for fitting, can be turned off to use geometric bin centers instead (for testing systematics)
-        USE_UNBINNED_SIG_FIT = false; //default uses unbinned signal fit using RooFit, set fault to fit to a histogram using Root.fit
+        USE_UNBINNED_SIG_FIT = true; //default uses unbinned signal fit using RooFit, set fault to fit to a histogram using Root.fit
         // suppress RooFit messages
         RooMsgService* rms = &RooMsgService::instance();
         rms->setSilentMode(true);
@@ -511,63 +511,63 @@ std::pair<double,double> Chi2_Fitter::Mh_sig_fit(TTree* binnedTree, TCut bin_cut
     return N_sig_result;
 }
 
-std::pair<double,double> Chi2_Fitter::Mx_sig_fit_histogram(TTree* binnedTree, TCut bin_cut,int helicity){
-    //NOT FINISHED YET
-    // Define fitting bounds
-    // Scale Mx min/max values based on obs_bin_idx if OBS == "t_elec"
-    double Mx_min_val = 0.55;
-    double Mx_max_val = 1.3;
+// std::pair<double,double> Chi2_Fitter::Mx_sig_fit_histogram(TTree* binnedTree, TCut bin_cut,int helicity){
+//     //NOT FINISHED YET
+//     // Define fitting bounds
+//     // Scale Mx min/max values based on obs_bin_idx if OBS == "t_elec"
+//     double Mx_min_val = 0.55;
+//     double Mx_max_val = 1.3;
     
-    if (OBS == "t_elec") {
-        int n_obs_bins = BN_EDGS.size() - 1;
-        double step_fraction = (n_obs_bins > 1) ? (double)obs_bin_idx / (n_obs_bins - 1) : 0.0;
+//     if (OBS == "t_elec") {
+//         int n_obs_bins = BN_EDGS.size() - 1;
+//         double step_fraction = (n_obs_bins > 1) ? (double)obs_bin_idx / (n_obs_bins - 1) : 0.0;
         
-        double min_start = 0.7;
-        double min_end = 0.5;
-        double max_start = 1.6;
-        double max_end = 1.2;
+//         double min_start = 0.7;
+//         double min_end = 0.5;
+//         double max_start = 1.6;
+//         double max_end = 1.2;
         
-        Mx_min_val = min_start - step_fraction * (min_start - min_end);
-        Mx_max_val = max_start - step_fraction * (max_start - max_end);
-    }
-     std::cout<<"MX Fitting range: "<<Mx_min_val<<" to "<<Mx_max_val<<std::endl;
-     double lb = Mx_min_val;
-     double ub = Mx_max_val;
+//         Mx_min_val = min_start - step_fraction * (min_start - min_end);
+//         Mx_max_val = max_start - step_fraction * (max_start - max_end);
+//     }
+//      std::cout<<"MX Fitting range: "<<Mx_min_val<<" to "<<Mx_max_val<<std::endl;
+//      double lb = Mx_min_val;
+//      double ub = Mx_max_val;
 
-    // Create histogram for this bin
-    TH1F hist("temp_hist", "temp", 100, lb, ub);
-    binnedTree->Draw("Mx>>temp_hist", bin_cut, "goff");
+//     // Create histogram for this bin
+//     TH1F hist("temp_hist", "temp", 100, lb, ub);
+//     binnedTree->Draw("Mx>>temp_hist", bin_cut, "goff");
     
-    // Fit histogram with Voigtian signal + Chebychev background
-    TF1 fit_func("fit_func", "gaus((x-[1]), [2]) + [4]*([5]*x + [6]*(2*x*x - 1))", lb, ub);
+//     // Fit histogram with Voigtian signal + Chebychev background
+//     TF1 fit_func("fit_func", "gaus((x-[1]), [2]) + [4]*([5]*x + [6]*(2*x*x - 1))", lb, ub);
     
-    // Set initial parameter values and limits
-    fit_func.SetParameters(hist.GetMaximum()*0.7, 0.78, 0.06, 0.15, hist.GetMaximum()*0.3,0,0); // Initial guesses
-    fit_func.SetParLimits(0, 1, hist.GetMaximum()); // N_sig
-    fit_func.SetParLimits(1, 0.75, 0.9); // mu
-    fit_func.SetParLimits(2, 0.01, 0.09); // sigma
-    fit_func.SetParLimits(3, 0.145, 0.155); // gamma
-    fit_func.SetParLimits(4, 1, hist.GetMaximum()); // N_bkg
-    fit_func.SetParLimits(5, -1, 1); // Cheby coeff 1
-    fit_func.SetParLimits(6, -1, 1); // Cheby coeff 2
+//     // Set initial parameter values and limits
+//     fit_func.SetParameters(hist.GetMaximum()*0.7, 0.78, 0.06, 0.15, hist.GetMaximum()*0.3,0,0); // Initial guesses
+//     fit_func.SetParLimits(0, 1, hist.GetMaximum()); // N_sig
+//     fit_func.SetParLimits(1, 0.75, 0.9); // mu
+//     fit_func.SetParLimits(2, 0.01, 0.09); // sigma
+//     fit_func.SetParLimits(3, 0.145, 0.155); // gamma
+//     fit_func.SetParLimits(4, 1, hist.GetMaximum()); // N_bkg
+//     fit_func.SetParLimits(5, -1, 1); // Cheby coeff 1
+//     fit_func.SetParLimits(6, -1, 1); // Cheby coeff 2
 
-    fit_func.SetParName(0, "N_sig");
-    fit_func.SetParName(1, "mu");
-    fit_func.SetParName(2, "sigma");
-    fit_func.SetParName(3, "gamma");
-    fit_func.SetParName(4, "N_bkg");
-    fit_func.SetParName(5, "c1");
-    fit_func.SetParName(6, "c2");
+//     fit_func.SetParName(0, "N_sig");
+//     fit_func.SetParName(1, "mu");
+//     fit_func.SetParName(2, "sigma");
+//     fit_func.SetParName(3, "gamma");
+//     fit_func.SetParName(4, "N_bkg");
+//     fit_func.SetParName(5, "c1");
+//     fit_func.SetParName(6, "c2");
 
-    hist.Fit(&fit_func, "RQ"); 
+//     hist.Fit(&fit_func, "RQ"); 
 
-    double N_sig = fit_func.GetParameter(0);
-    double N_sig_err = fit_func.GetParError(0);
+//     double N_sig = fit_func.GetParameter(0);
+//     double N_sig_err = fit_func.GetParError(0);
 
-    PlotSigFitGraph(hist, fit_func, helicity); 
+//     PlotSigFitGraph(hist, fit_func, helicity); 
 
-    return std::make_pair(N_sig, N_sig_err);
-}
+//     return std::make_pair(N_sig, N_sig_err);
+// }
 
 std::pair<double,double> Chi2_Fitter::Mx_sig_fit(TTree* binnedTree, TCut bin_cut,int helicity){
     //Define RooFit Variables

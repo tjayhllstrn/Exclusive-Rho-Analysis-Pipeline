@@ -98,7 +98,7 @@ int hipo2tree_pippi0(const char* hipoFile = "",
         if(!photon_filter.Run(r->getRECParticle(), r->getRECCalorimeter(),r->getRUNconfig())) return false;
         return true;
     };
-    _c12->SetReadAction(GBT_filter_lambda); // Set the lambda function as the read action for the chain, so it will be called for each event read from the hipo files
+    // _c12->SetReadAction(GBT_filter_lambda); // Set the lambda function as the read action for the chain, so it will be called for each event read from the hipo files
 
     //now loop over the chain of events (chain becomes like on big hipofile) until we reach the max number of events. note: if maxEvents = -1, then it will run through the whole chain.
     while (_chain.Next() == true && (whileidx < maxEvents || maxEvents < 0)) {

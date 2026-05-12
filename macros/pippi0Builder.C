@@ -411,7 +411,7 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
             }
         }
     }
-
+    // cout << "WARNING: No GBT photons cut" <<endl;
     cout << "GBT cut " << GBTcounter << " photons" <<endl;
     cout << "Writing Total TTree with " << outtree->GetEntries() << " entries" << endl;
     outtree->Write();

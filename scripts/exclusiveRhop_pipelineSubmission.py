@@ -3,12 +3,12 @@ import subprocess
 from pathlib import Path
 
 # === USER CONFIGURATION ===
-input_dirs = [Path("/lustre24/expphy/cache/clas12/rg-a/production/montecarlo/clasdis_pass2/fa18_inb")] #[Path("/lustre24/expphy/cache/clas12/rg-a/production/recon/fall2018/torus-1/pass2/main/train/nSidis"),Path("/lustre24/expphy/cache/clas12/rg-a/production/recon/spring2019/torus-1/pass2/dst/train/nSidis")]#,Path("/lustre24/expphy/cache/clas12/rg-a/production/montecarlo/clasdis_pass2/fa18_inb")
-input_file_base = 'clasdis_rga_fa18_inb_45nA_10604MeV*.hipo' #corresponds with the file names that you want to run in input_dirs
+input_dirs = [Path("/lustre24/expphy/cache/clas12/rg-a/production/recon/fall2018/torus-1/pass2/main/train/nSidis"),Path("/lustre24/expphy/cache/clas12/rg-a/production/recon/spring2019/torus-1/pass2/dst/train/nSidis")] #[Path("/lustre24/expphy/cache/clas12/rg-a/production/montecarlo/clasdis_pass2/fa18_inb")] #[Path("/lustre24/expphy/cache/clas12/rg-a/production/recon/fall2018/torus-1/pass2/main/train/nSidis"),Path("/lustre24/expphy/cache/clas12/rg-a/production/recon/spring2019/torus-1/pass2/dst/train/nSidis")]#,Path("/lustre24/expphy/cache/clas12/rg-a/production/montecarlo/clasdis_pass2/fa18_inb")
+input_file_base = 'nSidis*.hipo' #corresponds with the file names that you want to run in input_dirs
 
-output_base = Path("/w/hallb-scshelf2102/clas12/users/tjhellst/Exclusive-Rho-Analysis-Pipeline/out")
-output_names = ["pippi0_MC_in_50nA"] # must correspond with the order of the entries in input_dirs
-final_root_output_name = "pippi0_MC_in_pass2"
+output_base = Path("/lustre24/expphy/volatile/clas12/users/tjhellst/ExclusiveRhoPlus_RGA_processedData")
+output_names = ["pippi0_fall2018_in_pass2","pippi0_spring2019_in_pass2"] # must correspond with the order of the entries in input_dirs
+final_root_output_name = "pippi0_merged_in_pass2" # name for the final merged root file (without .root extension)
 
 config_file = "config/pippi0_RGAinbending_tbinning.txt"
 
@@ -21,30 +21,9 @@ def sbatch_submit(args,dry_run=False):
     print(f"Submitting: {' '.join(args)}")
     
     if dry_run:
-        # Extract the script name and its arguments
-        script_idx = next(i for i, arg in enumerate(args) if arg.endswith('.sbatch'))
-        script_name = args[script_idx]
-        script_args = args[script_idx + 1:]  # Arguments after the script name
-        
-        # Run the script directly with bash for testing
-        bash_cmd = ['bash', script_name] + script_args
-        print(f"  → Dry run: executing {' '.join(bash_cmd)}")
-        
-#        try:
-#            result = subprocess.run(bash_cmd, capture_output=True, text=True, check=True)
-#            print(f"  STDOUT:\n{result.stdout}")
-#            if result.stderr:
-#                print(f"  STDERR:\n{result.stderr}")
-#            
-            # Return fake job ID
         fake_job_id = str(abs(hash(' '.join(args))) % 100000)
         print(f"  → Fake JobID: {fake_job_id}\n")
         return fake_job_id
-#        except subprocess.CalledProcessError as e:
-#            print(f"  ERROR: Script failed with exit code {e.returncode}")
-#            print(f"  STDOUT: {e.stdout}")
-#            print(f"  STDERR: {e.stderr}")
-#            raise
     #when it is not a dry_run...
     try:
         result = subprocess.run(args, capture_output=True, text=True, check=True)

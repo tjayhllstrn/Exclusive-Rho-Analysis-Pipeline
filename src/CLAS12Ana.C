@@ -67,7 +67,7 @@ std::vector<part> CLAS12Ana::load_reco_particles(const std::unique_ptr<clas12::c
     
     // Loop over reconstructed particles
     // -------------------------------------------------------
-    auto particles=_c12->getDetParticles();
+    auto particles=_c12->getDetParticles(); //"true" allows for the iguana filtering to be applied in hopo2tree_pippi0.C
     for(unsigned int idx = 0 ; idx < particles.size() ; idx++){
       // Create new part struct
       part partstruct;
