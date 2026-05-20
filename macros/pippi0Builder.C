@@ -74,6 +74,7 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
     EventTree->SetBranchAddress("trueparentparentid", &trueparentparentid);
     EventTree->SetBranchAddress("trueparentparentpid", &trueparentparentpid);
     EventTree->SetBranchAddress("p_gamma",&p_gamma);
+    bool has_p_gamma = (EventTree->GetBranch("p_gamma") != nullptr);
     TString treename = "";
     //make sure there is no object called pippi0 before making one
     if (f->Get("pippi0")) f->Delete("pippi0*;*");
@@ -187,8 +188,8 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
 
     int GBTcounter = 0;
     //Calculate all other variables of interest - Mdiphoton, Mh,Mx, z,x,Q2,y,W,x_F,-t
-    TLorentzVector pip, diphoton, dihadron, pho1, pho2;
-    TLorentzVector truepip, truediphoton, truedihadron, truepho1, truepho2;
+    TLorentzVector pip, diphoton, dihadron, pho1, pho2, neutron;
+    TLorentzVector truepip, truediphoton, truedihadron, truepho1, truepho2, trueneutron;
     // for loop over all events
     int N = EventTree->GetEntries();
     Kinematics kin;
@@ -208,6 +209,9 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
         }
         
         EventTree->GetEntry(ev);
+        if (!has_p_gamma) {
+            for (int i = 0; i < Nmax; ++i) p_gamma[i] = 1.0; // default value if p_gamma branch doesn't exist
+        }
         //figure out if the event is MC or not and determine Beam energy based on run
         double eBeam = runBeamEnergy(run);
         TLorentzVector init_electron(0,0,sqrt(eBeam*eBeam-mE*mE),eBeam);
@@ -315,17 +319,22 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
         
                         phih = kin.phi_h(q,init_electron,dihadron);
                         phih_true = kin.phi_h(trueq,init_electron,truedihadron);
-        
-                        Mx = (init_electron+init_target-electron-dihadron).M();
-                        Mx_true = (init_electron+init_target-trueelectron-truedihadron).M();
+                        
+                        neutron = init_electron + init_target - electron - dihadron;
+                        trueneutron = init_electron + init_target - trueelectron - truedihadron;
+
+                        Mx = (neutron).M();
+                        Mx_true = (trueneutron).M();
 
                         //find the projected 3 momentum of the missing mass particle (assuming there is one missing mass particle with mass 1GeV)
-                        px_neutron = (init_electron + init_target - dihadron - electron).Px();
-                        px_neutron_true = (init_electron + init_target - truedihadron - trueelectron).Px();
-                        py_neutron = (init_electron + init_target - dihadron - electron).Py();
-                        py_neutron_true = (init_electron + init_target - truedihadron - trueelectron).Py();
-                        pz_neutron = (init_electron + init_target - dihadron - electron).Pz();
-                        pz_neutron_true = (init_electron + init_target - truedihadron - trueelectron).Pz();
+
+            
+                        px_neutron = (neutron).Px();
+                        px_neutron_true = (trueneutron).Px();
+                        py_neutron = (neutron).Py();
+                        py_neutron_true = (trueneutron).Py();
+                        pz_neutron = (neutron).Pz();
+                        pz_neutron_true = (trueneutron).Pz();
                         //calculate which sector a neutral particle with this momentum would hit in the CLAS12 EC - based on sector divisions for DC middle layer
                         double phi = 180/PI *kin.phi(px_neutron,py_neutron);
                         if(phi<30 && phi>=-30){sector_neutron = 1;}
@@ -368,7 +377,7 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
                         
                         
                         
-                        
+
         
                         xF = kin.xF(q,dihadron,init_target,W);
                         xF_true = kin.xF(trueq,truedihadron,init_target,trueW);
@@ -399,7 +408,7 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
                         pip_P_true = truepip.P();
         
                         if(!(electron.E()>0&&xF1>0&&xF2>0&&p_gamma[j]>0.78&&p_gamma[k]>0.78)){ 
-                            if (p_gamma[j]>0.78||p_gamma[k]>0.78){
+                            if (p_gamma[j]<0.78||p_gamma[k]<0.78){
                                 GBTcounter++;
                                    }
                             continue;

@@ -360,7 +360,7 @@ void MLM_Fitter::PurityCalc_Mh(TTree* tree){
   RooRealVar obs(OBS.c_str(), OBS.c_str(), BN_EDGS.front(), BN_EDGS.back());
   
   //Define fit parameters for signal (Voigtian)
-  RooRealVar mu("m_{0}", "#mu", 0.8, 0.6, 1);
+  RooRealVar mu("m_{0}", "#mu", 0.775, 0.750, 0.8);
   RooRealVar sigma("sigma_{sig}", "#sigma", 0.06, 0.01, 0.1);
   RooRealVar gamma("#gamma", "#gamma", 0.15, 0.145, 0.155); //0.15 GeV is the FWHM of the rho meson based on PDG
   

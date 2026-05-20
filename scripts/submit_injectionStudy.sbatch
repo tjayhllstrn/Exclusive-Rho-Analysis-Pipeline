@@ -8,40 +8,35 @@
 #SBATCH --chdir=/scratch/slurm
 #SBATCH --output=/farm_out/%u/%x-%j-%N.out
 #SBATCH --error=/farm_out/%u/%x-%j-%N.err
-#SBATCH --job-name=pipeline0_runSingleHipo_pippi0_RGAMCpass2
-#SBATCH --time=5:00:00
+#SBATCH --job-name=Inj_Asym_RGAMCpass2
+#SBATCH --time=0:30:00
 
-pwd
 cd /w/hallb-scshelf2102/clas12/users/tjhellst/Exclusive-Rho-Analysis-Pipeline/
-pwd
-source /u/home/tjhellst/.Exclusive-Rho-Analysis-Pipeline/bin/activate
 
-INPUT_DIR=$1
-OUTPUT_DIR=$2
-INPUT_FILE_BASE=$3
-#clasdis*.hipo
+INDIR=$1
+INJASYM_TYPE=$2
+BKGASYM_TYPE=$3
+INPUT_FILE_BASE=clasdis_*.root
 
 # Enable nullglob to get empty array if no matches (instead of literal pattern)
 shopt -s nullglob
-FILES=($INPUT_DIR/$INPUT_FILE_BASE) 
+FILES=($INDIR/$INPUT_FILE_BASE) 
 shopt -u nullglob
 
 # Debug output
-echo "INPUT_DIR: $INPUT_DIR"
+echo "INPUT_DIR: $INDIR"
 echo "INPUT_FILE_BASE: $INPUT_FILE_BASE"
-echo "Pattern: $INPUT_DIR/$INPUT_FILE_BASE"
+echo "Pattern: $INDIR/$INPUT_FILE_BASE"
 echo "Number of files found: ${#FILES[@]}"
 echo "Task ID: $SLURM_ARRAY_TASK_ID"
 
 # Check if files were found
 if [ ${#FILES[@]} -eq 0 ]; then
-    echo "ERROR: No files matched pattern $INPUT_DIR/$INPUT_FILE_BASE"
+    echo "ERROR: No files matched pattern $INDIR/$INPUT_FILE_BASE"
     exit 1
 fi
 
 
-TYPE=pippi0
-
 echo "Running job ${SLURM_ARRAY_TASK_ID[@]} on file: ${FILES[$SLURM_ARRAY_TASK_ID]}"
 
-./scripts/run_single_hipo.rb --type $TYPE --input ${FILES[$SLURM_ARRAY_TASK_ID]} --outdir $OUTPUT_DIR -n -1
+clas12root -l -b -q "macros/InjectionStudy.cpp(\"${FILES[$SLURM_ARRAY_TASK_ID]}\", \"$INJASYM_TYPE\", \"$BKGASYM_TYPE\")"

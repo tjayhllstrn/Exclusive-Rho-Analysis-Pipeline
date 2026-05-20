@@ -27,6 +27,7 @@ public:
        void fill_mc_event_variables(EVENT &, std::vector<part>);
     
        void match_mc_to_reco(std::vector<part>&, std::vector<part>&);
+    void match_mc_to_reco_mcmatch(std::vector<part>&, std::vector<part>&, const std::unique_ptr<clas12::clas12reader>&);
     
        std::vector<std::vector<int>> dihadron_idxs(int,int,int[],int);
        std::vector<std::vector<int>> dihadron_idxs(int,int,std::vector<int>);

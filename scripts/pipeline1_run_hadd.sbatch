@@ -2,7 +2,7 @@
 #SBATCH --partition=production
 #SBATCH --account=clas12
 #SBATCH --mem=5000
-#SBATCH --time=02:00:00
+#SBATCH --time=01:00:00
 #SBATCH --output=/farm_out/%u/%x-%j-%N.out
 #SBATCH --error=/farm_out/%u/%x-%j-%N.err
 #SBATCH --job-name=pipeline1_hadd
@@ -12,5 +12,8 @@ FNAME=$2
 
 cd "$OUTDIR"
 
+# Remove existing output file if it exists
+[ -f "$FNAME" ] && rm "$FNAME"
+
 # Combine all .root files in OUTDIR into one merged file
-hadd -f "$FNAME" ./nSidis_*.root
+hadd -f "$FNAME" ./*.root

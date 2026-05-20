@@ -229,6 +229,7 @@ struct part{
   double truevy=-999;
   double truevz=-999;
   int is_CFR=-999;
+  int mcindex=-999;
   int truepid=-999;
   int trueparentid=-999;
   int trueparentpid=-999;

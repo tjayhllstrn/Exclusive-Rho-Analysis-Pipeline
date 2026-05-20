@@ -146,6 +146,7 @@ std::vector<part> CLAS12Ana::load_mc_particles(const std::unique_ptr<clas12::cla
       partstruct.truevx = mcparticles->getVx(idx);
       partstruct.truevy = mcparticles->getVy(idx);
       partstruct.truevz = mcparticles->getVz(idx);
+      partstruct.mcindex = mcparticles->getIndex(idx);
 
       partstruct.trueparentid = mcparticles->getParent(idx)-1;
       partstruct.trueparentpid = mcparticles->getPid(partstruct.trueparentid);
@@ -668,6 +669,164 @@ void CLAS12Ana::match_mc_to_reco(std::vector<part>& vec_particles,
     
 }
 
+// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void CLAS12Ana::match_mc_to_reco_mcmatch(std::vector<part>& vec_particles,
+                                         std::vector<part>& vec_mcparticles,
+                                         const std::unique_ptr<clas12::clas12reader>& _c12){
+
+    auto mcpbank = _c12->mcparts();
+    if (!mcpbank) return;
+
+    auto mcmatch = mcpbank->getMatch();
+    if (!mcmatch) return;
+
+    auto copy_match = [](part& reco, part& mc) {
+        reco.truepx = mc.truepx;
+        reco.truepy = mc.truepy;
+        reco.truepz = mc.truepz;
+        reco.truep = mc.truep;
+        reco.truept = mc.truept;
+        reco.trueE = mc.trueE;
+        reco.truem = mc.truem;
+        reco.truetheta = mc.truetheta;
+        reco.trueeta = mc.trueeta;
+        reco.truephi = mc.truephi;
+        reco.truevx = mc.truevx;
+        reco.truevy = mc.truevy;
+        reco.truevz = mc.truevz;
+        reco.is_CFR = mc.is_CFR;
+        reco.mcindex = mc.mcindex;
+        reco.truepid = mc.truepid;
+        reco.trueparentid = mc.trueparentid;
+        reco.trueparentpid = mc.trueparentpid;
+        reco.trueparentparentid = mc.trueparentparentid;
+        reco.trueparentparentpid = mc.trueparentparentpid;
+
+        mc.px = reco.px;
+        mc.py = reco.py;
+        mc.pz = reco.pz;
+        mc.p = reco.p;
+        mc.pt = reco.pt;
+        mc.E = reco.E;
+        mc.m = reco.m;
+        mc.theta = reco.theta;
+        mc.eta = reco.eta;
+        mc.phi = reco.phi;
+        mc.vx = reco.vx;
+        mc.vy = reco.vy;
+        mc.vz = reco.vz;
+        mc.is_CFR = reco.is_CFR;
+
+        mc.pcal_sector = reco.pcal_sector;
+        mc.pcal_e = reco.pcal_e;
+        mc.pcal_x = reco.pcal_x;
+        mc.pcal_y = reco.pcal_y;
+        mc.pcal_z = reco.pcal_z;
+        mc.pcal_lu = reco.pcal_lu;
+        mc.pcal_lv = reco.pcal_lv;
+        mc.pcal_lw = reco.pcal_lw;
+        mc.pcal_m2u = reco.pcal_m2u;
+        mc.pcal_m2v = reco.pcal_m2v;
+        mc.pcal_m2w = reco.pcal_m2w;
+
+        mc.ecin_sector = reco.ecin_sector;
+        mc.ecin_e = reco.ecin_e;
+        mc.ecin_x = reco.ecin_x;
+        mc.ecin_y = reco.ecin_y;
+        mc.ecin_z = reco.ecin_z;
+        mc.ecin_lu = reco.ecin_lu;
+        mc.ecin_lv = reco.ecin_lv;
+        mc.ecin_lw = reco.ecin_lw;
+        mc.ecin_m2u = reco.ecin_m2u;
+        mc.ecin_m2v = reco.ecin_m2v;
+        mc.ecin_m2w = reco.ecin_m2w;
+
+        mc.ecout_sector = reco.ecout_sector;
+        mc.ecout_e = reco.ecout_e;
+        mc.ecout_x = reco.ecout_x;
+        mc.ecout_y = reco.ecout_y;
+        mc.ecout_z = reco.ecout_z;
+        mc.ecout_lu = reco.ecout_lu;
+        mc.ecout_lv = reco.ecout_lv;
+        mc.ecout_lw = reco.ecout_lw;
+        mc.ecout_m2u = reco.ecout_m2u;
+        mc.ecout_m2v = reco.ecout_m2v;
+        mc.ecout_m2w = reco.ecout_m2w;
+
+        mc.sector = reco.sector;
+        mc.traj_x1 = reco.traj_x1;
+        mc.traj_y1 = reco.traj_y1;
+        mc.traj_z1 = reco.traj_z1;
+        mc.traj_x2 = reco.traj_x2;
+        mc.traj_y2 = reco.traj_y2;
+        mc.traj_z2 = reco.traj_z2;
+        mc.traj_x3 = reco.traj_x3;
+        mc.traj_y3 = reco.traj_y3;
+        mc.traj_z3 = reco.traj_z3;
+
+        mc.nphe_ltcc = reco.nphe_ltcc;
+        mc.nphe_htcc = reco.nphe_htcc;
+    };
+
+    // Build lookup maps from bank indices to vector indices
+    std::unordered_map<int,int> recIdxToVec;
+    for (int i=0; i<vec_particles.size(); ++i) {
+        recIdxToVec[vec_particles[i].pindex] = i;
+    }
+
+    std::unordered_map<int,int> mcIdxToVec;
+    for (int j=0; j<vec_mcparticles.size(); ++j) {
+        mcIdxToVec[vec_mcparticles[j].mcindex] = j;
+    }
+
+    // Iterate through MC::RecMatch entries and perform matching
+    // MC::RecMatch has one entry per REC::Particle
+    const int nmatch = mcmatch->getRows();
+    for (int k=0; k<nmatch; ++k) {
+        mcmatch->setEntry(k);
+        
+        // Get indices from MC::RecMatch bank
+        int pindex = mcmatch->getPindex();      // REC::Particle index
+        int mcindex = mcmatch->getMCindex();    // MC::Particle index
+        double quality = mcmatch->getQuality(); // Matching quality (0-1, 0 means no match)
+        
+        // Skip non-matches
+        if (quality == 0 || pindex < 0 || mcindex < 0) {
+            continue;
+        }
+        
+        // Find corresponding particles in our vectors using lookup maps
+        auto recIt = recIdxToVec.find(pindex);
+        auto mcIt = mcIdxToVec.find(mcindex);
+        
+        if (recIt == recIdxToVec.end() || mcIt == mcIdxToVec.end()) {
+            // Particle not found in our vectors (may have been filtered out)
+            continue;
+        }
+        
+        int vec_rec = recIt->second;
+        int vec_mc = mcIt->second;
+        
+        // Perform diagnostic check
+        float dth = abs(vec_particles[vec_rec].theta - vec_mcparticles[vec_mc].truetheta) * 180 / PI;
+        float raw = vec_particles[vec_rec].phi - vec_mcparticles[vec_mc].truephi;
+        float dphi = fabs(atan2(sin(raw), cos(raw))) * 180.0 / PI;
+        float dE = abs(vec_particles[vec_rec].E - vec_mcparticles[vec_mc].trueE);
+        
+        if (!(dth < 2 && dphi < 4 && dE < 1)) {
+            std::cout << "\e[1;31mWARNING: Large mismatch in MC-REC match " << k 
+                      << ": pindex " << pindex << " mcindex " << mcindex
+                      << " dtheta " << dth << " dphi " << dphi << " dE " << dE << "\e[0m" << std::endl;
+        } else {
+            std::cout << "\e[1;32mMatch " << k << ": pindex " << pindex << " mcindex " << mcindex
+                      << " quality " << quality << " dtheta " << dth << " dphi " << dphi << " dE " << dE 
+                      << "\e[0m" << std::endl;
+        }
+        
+        // Copy truth variables from matched MC particle to reconstructed particle
+        copy_match(vec_particles[vec_rec], vec_mcparticles[vec_mc]);
+    }
+}
 
 // //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void CLAS12Ana::generate_combinations(std::vector<int>& input, int num, int start_idx, std::vector<int>& curr_combination, std::vector<std::vector<int>>& result) {

@@ -442,8 +442,8 @@ std::pair<double,double> Chi2_Fitter::Mh_sig_fit(TTree* binnedTree, TCut bin_cut
                        RooFit::Cut(bin_cut));
     double N_total = binned_data.numEntries();
 
-    //Define fit parameters for signal (Gaussian)
-    RooRealVar mu(("m0_" + idx).c_str(), "#mu", 0.78, 0.75, 0.9);
+    //Define fit parameters for signal (Voigtian)
+    RooRealVar mu(("m0_" + idx).c_str(), "#mu", 0.775, 0.750, 0.8);
     // RooRealVar sigma(("sigma_" + idx).c_str(), "#sigma", 0.06, 0.001, 0.3);
     RooRealVar sigma(("sigma_" + idx).c_str(), "#sigma", 0.06, 0.01, 0.09);
     RooRealVar gamma(("gamma_" + idx).c_str(), "#gamma", 0.15, 0.145, 0.155);
