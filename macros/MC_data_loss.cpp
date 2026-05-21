@@ -14,6 +14,9 @@
 #include <iostream>
 #include <sstream>
 
+//This macro takes an MC and data file and compares them. It injects an asymmetry and computes a loss function based on how well the injected MC and Data 
+// match in the given phi bins. The goal of this macro is to compute a loss function for a given Asymemtry and phi binning, to be used in the optimization of the asymmetry.
+
 static bool is_RhoSig(const inj_event& event) {
 	bool pipParentIsRho = event.truepipparent_pid == 213;
 	bool phoParentsParentIsRho = event.truepho1parentparent_pid == 213 && event.truepho2parentparent_pid == 213;
@@ -49,6 +52,7 @@ void MC_data_loss(const char* mc_file,
 	const char* tree_name = "pippi0";
 	const char* phi_var = "phi";
 	const char* mh_var = "Mh";
+	const char* bkg_asym = "A01";
 
 	std::string combo_name = BuildComboName(mc_file, data_file);
 	std::string out_base = "out/" + combo_name + "/";
@@ -137,7 +141,7 @@ void MC_data_loss(const char* mc_file,
 		gRandom = &seededRng;
 
 		cross_section sig_sigma(signal_asym);
-		cross_section bkg_sigma("A01");
+		cross_section bkg_sigma(bkg_asym);
 
 		const Long64_t nEntries = inTree->GetEntries();
 		std::cout << "Injecting "<<signal_asym << " asymmetry into MC" << std::endl;

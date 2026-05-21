@@ -1,0 +1,19 @@
+# Example config for filter_and_strip_TTree
+
+label ExclusiveCuts
+# treename defaults to pippi0 if omitted
+treename pippi0
+
+# Cut string applied via filter::SetExtraCut
+cut 0.104 < Mdiphoton && Mdiphoton < 0.164 && 0.85 < Mx && Mx < 1.05 && pho1_E > 0.2 && pho2_E > 0.2
+
+# Optional Mh range (both required to enable)
+mh_min 0.4
+mh_max 1.4
+
+# Optional variable names used by filter
+phi_var phi
+mh_var Mh
+
+# Comma-separated list of branches to keep
+branches phi, Pol,eps,t_elec,truepipparent_pid,truepho1parentparent_pid,truepho2parentparent_pid,truepho1parent_id,truepho2parent_id,truepho1parent_pid,truepho2parent_pid,hel,Mh, Mx, Mdiphoton, pho1_E, pho2_E
