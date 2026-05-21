@@ -3,9 +3,25 @@
 #include <cmath>
 #include <cstring>
 #include <limits>
+#include <cstdlib>
 #include <TRandom.h>
 
 cross_section::cross_section(const char* asymmetry_type){
+    const char* const_prefix = "const:";
+    const size_t const_prefix_len = std::strlen(const_prefix);
+    if (asymmetry_type && std::strncmp(asymmetry_type, const_prefix, const_prefix_len) == 0) {
+        const char* value_str = asymmetry_type + const_prefix_len;
+        char* endptr = nullptr;
+        double value = std::strtod(value_str, &endptr);
+        if (endptr != value_str) {
+            std::cout << "VALUE: " << value << std::endl;
+            A0 = value;
+            At = 0.0;
+            use_linear_t = false;
+            return;
+        }
+    }
+
     const char* allowed_types[6];
     allowed_types[0] = "A01";
     allowed_types[1] = "A10";
@@ -39,7 +55,7 @@ cross_section::cross_section(const char* asymmetry_type){
         At = -0.1; // linear coefficient in t
         use_linear_t = true;
     } else {
-        std::cerr << "\033[33mUnknown asymmetry type: " << asymmetry_type << ". choose from \033[0m";
+        std::cerr << "\033[33mUnknown asymmetry type: " << asymmetry_type << ". choose from const:VALUE or \033[0m";
         for(int i = 0; i < sizeof(allowed_types)/sizeof(allowed_types[0]); i++){
             std::cerr << allowed_types[i] << " ";
         }
