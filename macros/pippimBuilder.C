@@ -13,7 +13,8 @@ int pippimBuilder(const char *input_file="out/test/nSidis_005032.root"){
     double truex, trueQ2, trueW;
     double tPol;
     int hel,run,A,_evnum,hwp,tSign,target;
-    int Nmax=100;
+    const int Nmax=100;
+    int Nmax_tree=100;
     int isMC=0;
     double px[Nmax], py[Nmax], pz[Nmax], E[Nmax], vz[Nmax], chi2[Nmax], theta[Nmax], eta[Nmax], phi[Nmax];
     double truepx[Nmax] , truepy[Nmax] , truepz[Nmax], trueE[Nmax], truetheta[Nmax], trueeta[Nmax], truephi[Nmax];
@@ -38,7 +39,7 @@ int pippimBuilder(const char *input_file="out/test/nSidis_005032.root"){
     EventTree->SetBranchAddress("W",&W); 
     EventTree->SetBranchAddress("y",&y); 
     EventTree->SetBranchAddress("nu",&nu); 
-    EventTree->SetBranchAddress("Nmax",&Nmax);
+    EventTree->SetBranchAddress("Nmax",&Nmax_tree);
     EventTree->SetBranchAddress("px",px);
     EventTree->SetBranchAddress("py",py);
     EventTree->SetBranchAddress("pz",pz);
@@ -66,8 +67,9 @@ int pippimBuilder(const char *input_file="out/test/nSidis_005032.root"){
     if (f->Get("pippim")) f->Delete("pippim*;*");
     treename = "pippim";
     TTree *outtree = new TTree(treename.Data(),"Tree");
-    double z, pT, phih, Mx, xF, xF1, xF2, Mh,eps,gamma,th,cth;
-    double z_true, pT_true, phih_true, Mx_true, xF_true, xF1_true, xF2_true, Mh_true,th_true,cth_true;
+    double z, pT, phih, Mx, xF, xF1, xF2, Mh,eps,gamma,th,cth,pip_P, t_elec;
+    double z_true, pT_true, phih_true, Mx_true, xF_true, xF1_true, xF2_true, Mh_true,th_true,cth_true,pip_P_true, t_elec_true;
+    double pip_parent_id, pip_parent_pid, pim_parent_id, pim_parent_pid;
     Mh=0;
     Mh_true=0;
     // Branching kinematic variables for the electron
@@ -88,7 +90,8 @@ int pippimBuilder(const char *input_file="out/test/nSidis_005032.root"){
     outtree->Branch("phi", &phih, "phi/D");
     outtree->Branch("Mx", &Mx, "Mx/D");
     outtree->Branch("Mh", &Mh, "Mh/D");
-    
+    outtree->Branch("pip_P", &pip_P, "pip_P/D");
+    outtree->Branch("pip_P_true", &pip_P_true, "pip_P_true/D");
     outtree->Branch("z_true", &z_true, "z_true/D");
     outtree->Branch("pT_true", &pT_true, "pT_true/D");
     outtree->Branch("xF_true", &xF_true, "xF_true/D");
@@ -103,6 +106,15 @@ int pippimBuilder(const char *input_file="out/test/nSidis_005032.root"){
 
     outtree->Branch("cth", &cth, "cth/D");
     outtree->Branch("cth_true", &cth_true, "cth_true/D");
+
+    outtree->Branch("pip_parent_id", &pip_parent_id, "pip_parent_id/D");
+    outtree->Branch("pip_parent_pid", &pip_parent_pid, "pip_parent_pid/D");
+    outtree->Branch("pim_parent_id", &pim_parent_id, "pim_parent_id/D");
+    outtree->Branch("pim_parent_pid", &pim_parent_pid, "pim_parent_pid/D");
+    outtree->Branch("t_elec", &t_elec, "t_elec/D");
+    outtree->Branch("t_elec_true", &t_elec_true, "t_elec_true/D");
+
+    outtree->Branch("Pol", &Pol, "Pol/D");
 
     // Initial particles
     double eBeam = 10.6041;
@@ -201,6 +213,14 @@ int pippimBuilder(const char *input_file="out/test/nSidis_005032.root"){
 
                 cth = cos(th);
                 cth_true = cos(th);
+
+                pip_parent_id = trueparentid[j];
+                pip_parent_pid = trueparentpid[j];
+                pim_parent_id = trueparentid[k];
+                pim_parent_pid = trueparentpid[k];
+
+                t_elec = kin.t_lep(electron,init_electron,dihadron);
+                t_elec_true = kin.t_lep(trueelectron,init_electron,truedihadron);
 
                 if(!(electron.E()>0&&pip.P()>1.25&&pim.P()>1.25&&xF1>0&&xF2>0)){
                     continue;

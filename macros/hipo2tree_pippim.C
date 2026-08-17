@@ -5,6 +5,8 @@
 #include "../src/Constants.h"
 #include "../src/Structs.h"
 #include "../src/Kinematics.C"
+#include "QADB.h"
+using namespace QA;
 
 int hipo2tree_pippim(
     const char* hipoFile = "",
@@ -32,16 +34,32 @@ int hipo2tree_pippim(
     auto& _c12 = _chain.C12ref();
     // Check if "rg-a" is present in the hipoFile path
     bool doQADB = false;
+    bool hipo_is_mc = false;
     std::string hipoFilePath = hipoFile;
     if (hipoFilePath.find("rg-a") != std::string::npos &&
         hipoFilePath.find("montecarlo") == std::string::npos) {
         doQADB = true;
     }
-
-    if (doQADB) {
-        _config_c12->applyQA("pass1");
-        _config_c12->db()->qadb_addQARequirement("OkForAsymmetry");
+    if (hipoFilePath.find("montecarlo")!=std::string::npos){
+        hipo_is_mc = true;
     }
+
+    //configure qa events to pass (based on ex https://github.com/JeffersonLab/clas12-qadb/blob/main/srcC/tests/testOkForAsymmetry.cpp)
+    QADB * qa = new QADB("pass2");
+    qa->CheckForDefect("TotalOutlier");     // these choices match the criteria of `OkForAsymmetry`
+    qa->CheckForDefect("TerminalOutlier");
+    qa->CheckForDefect("MarginalOutlier");
+    qa->CheckForDefect("SectorLoss");
+    qa->CheckForDefect("Misc");
+    for(int run : { // list of runs with `Misc` defect that are allowed by `OkForAsymmetry`
+    5046, 5047, 5051, 5128, 5129, 5130, 5158, 5159,
+    5160, 5163, 5165, 5166, 5167, 5168, 5169, 5180,
+    5181, 5182, 5183, 5400, 5448, 5495, 5496, 5505,
+    5567, 5610, 5617, 5621, 5623, 6736, 6737, 6738,
+    6739, 6740, 6741, 6742, 6743, 6744, 6746, 6747,
+    6748, 6749, 6750, 6751, 6753, 6754, 6755, 6756,
+    6757})
+    qa->AllowMiscBit(run);
 
     // Add Analysis Objects
     // -------------------------------------
@@ -74,12 +92,17 @@ int hipo2tree_pippim(
         // Set run specific information
         // -------------------------------------
         _cm.set_run(event_info.run);
-        // if (doQADB == true) {
-        //     if (!_c12->db()->qa()->isOkForAsymmetry(event_info.run, event_info.evnum)) {
-        //         badAsym++;
-        //         continue;
-        //     }
-        // }
+         // QA cuts
+        if(doQADB){
+            if(!qa->Pass(event_info.run,event_info.evnum)) {
+            badAsym++;
+            continue;
+            }
+            if(event_info.run == 6691){
+            badAsym++;
+            continue; // skip entire run 6691 due to false photons of one given energy in this run
+            }
+            }
         // *******************************************************************
         //     Reconstructed Particles
         //

@@ -270,5 +270,6 @@ void HipoBankInterface::clear(){
     _x_DC[i]=0;
     _y_DC[i]=0;
     _z_DC[i]=0;
+    _edge[i]=0;
   }
 }

@@ -134,14 +134,25 @@ void Chi2_Fitter::RunMhChi2Fit(int obs2bn_idx){
     TCut Mx_cut = TCut(("Mx>" + std::to_string(Mx_min) + " && Mx<" + std::to_string(Mx_max)).c_str());
     TCut obs2_cut = TCut((OBS2 + ">" + std::to_string(OBS2BN[obs2bn_idx]) + " && " + OBS2 + "<" + std::to_string(OBS2BN[obs2bn_idx+1])).c_str());
     TCut MinPhoCut = TCut(("pho1_E>" + std::to_string(MinPhoEnergy) + " && " + std::to_string(MinPhoEnergy) + "<pho2_E").c_str());
-    TCut pre_cut = Diphoton_cut && Mx_cut && obs2_cut && MinPhoCut;
+    TCut pre_cut;
+    if (TREENAME == "pippi0") {
+      std::cout << "  Creating/loading pippi0 pre-filtered tree..." << std::endl;
+      pre_cut = Diphoton_cut && Mx_cut && obs2_cut && MinPhoCut;
+    }
+    else if (TREENAME == "pippim") {
+        std::cout << "  Creating/loading pippim pre-filtered tree..." << std::endl;
+        pre_cut = Mx_cut && obs2_cut;
+    }
+    else {
+        throw std::runtime_error("Error: Unknown TREENAME specified: " + TREENAME);
+    }
 
     // Create or open cached filtered tree
     std::cout << "  Creating/loading pre-filtered tree..." << std::endl;
     
     // Generate unique filename based on input file, fit_type, obs2 bin, and MinPhoEnergy
     std::string base_filename = GetBaseFilename(IN_FILE);
-    std::string cache_filename = CACHE_DIR + "/filtered_tree_" + base_filename + "_" + FIT_TYPE + "_MhFit_" + OBS2 + "bin" + 
+    std::string cache_filename = CACHE_DIR + "/filtered_tree_" + base_filename + "_MhFit_" + OBS2 + "bin" + 
                                  std::to_string(obs2bn_idx) + "_" + 
                                  std::to_string(OBS2BN[obs2bn_idx]) + "_" + 
                                  std::to_string(OBS2BN[obs2bn_idx+1]) + "_" +
@@ -234,14 +245,25 @@ void Chi2_Fitter::RunMxChi2Fit(int obs2bn_idx){
     TCut Mh_cut = TCut(("Mh>" + std::to_string(Mh_min) + " && Mh<" + std::to_string(Mh_max)).c_str());
     TCut obs2_cut = TCut((OBS2 + ">" + std::to_string(OBS2BN[obs2bn_idx]) + " && " + OBS2 + "<" + std::to_string(OBS2BN[obs2bn_idx+1])).c_str());
     TCut MinPhoCut = TCut(("pho1_E>" + std::to_string(MinPhoEnergy) + " && " + std::to_string(MinPhoEnergy) + "<pho2_E").c_str());
-    TCut pre_cut = Diphoton_cut && Mh_cut && obs2_cut && MinPhoCut;
+    TCut pre_cut;
+    if (TREENAME == "pippi0") {
+        std::cout << "  Creating/loading pippi0 pre-filtered tree..." << std::endl;
+        pre_cut = Diphoton_cut && Mh_cut && obs2_cut && MinPhoCut;
+    }
+    else if (TREENAME == "pippim") {
+        std::cout << "  Creating/loading pippim pre-filtered tree..." << std::endl;
+        pre_cut = Mh_cut && obs2_cut;
+    }
+    else {
+        throw std::runtime_error("Error: Unknown TREENAME specified: " + TREENAME);
+    }
 
     // Create or open cached filtered tree
     std::cout << "  Creating/loading pre-filtered tree..." << std::endl;
     
     // Generate unique filename based on input file, fit_type and obs2 bin
     std::string base_filename = GetBaseFilename(IN_FILE);
-    std::string cache_filename = CACHE_DIR + "/filtered_tree_" + base_filename + "_" + FIT_TYPE + "_MxFit_" + OBS2 + "bin" + 
+    std::string cache_filename = CACHE_DIR + "/filtered_tree_" + base_filename + "_MxFit_" + OBS2 + "bin" + 
                                  std::to_string(obs2bn_idx) + "_" + 
                                  std::to_string(OBS2BN[obs2bn_idx]) + "_" + 
                                  std::to_string(OBS2BN[obs2bn_idx+1]) + "_" +
@@ -743,18 +765,19 @@ void Chi2_Fitter::FitToSin(std::vector<double>& x_vals,std::vector<std::pair<dou
     
     gr->SetMarkerStyle(20);  // Common visible marker
     gr->SetMarkerSize(1);
-    gr->GetXaxis()->SetTitle("#phi_{h}");
+    gr->GetXaxis()->SetTitle("#phi_{h} [rad]");
     gr->GetYaxis()->SetRangeUser(-0.5,0.5);
     gr->GetYaxis()->SetTitle("A_{LU}");
+    gr->SetTitle(Form("%.2f<%s<%.2f", BN_EDGS[obs_bin_idx], OBS.c_str(), BN_EDGS[obs_bin_idx+1]));
     gr->Draw("AP");
     fitFunc->Draw("same");
     
-    TLatex* latex = new TLatex();
-    latex->SetNDC();
-    latex->SetTextColor(kBlack);
-    latex->DrawLatex(0.63, 0.85, Form("%.2f<%s<%.2f", BN_EDGS[obs_bin_idx], OBS.c_str(), BN_EDGS[obs_bin_idx+1]));
-    latex->DrawLatex(0.15,0.85, Form("#chi^{2}/NDF = %.2f", chi2ndf));
-    latex->DrawLatex(0.57,0.15, Form("amp = %.3f #pm %.3f", amplitude, amplitude_err));
+    TLatex* latex1 = new TLatex(0.15,0.85, Form("#chi^{2}/NDF = %.2f", chi2ndf));
+    TLatex* latex2 = new TLatex(0.57,0.15, Form("amp = %.3f #pm %.3f", amplitude, amplitude_err));
+    latex1->SetNDC();
+    latex1->SetTextColor(kBlack);
+    latex2->SetNDC();
+    latex2->SetTextColor(kBlack);
 
     //calculate FLU and FLU error and store final results
     // double FLU = amplitude / (depol * Pol_avg);
@@ -775,7 +798,8 @@ void Chi2_Fitter::FitToSin(std::vector<double>& x_vals,std::vector<std::pair<dou
     TFile outFile(root_filename.c_str(), "UPDATE");
     gr->Write(Form("SinFit_graph_%d", obs_bin_idx));
     fitFunc->Write(Form("SinFit_func_%d", obs_bin_idx));
-    latex->Write(Form("SinFit_latex_%d", obs_bin_idx));
+    latex1->Write(Form("SinFit_latex1_%d", obs_bin_idx));
+    latex2->Write(Form("SinFit_latex2_%d", obs_bin_idx));
     outFile.Close();
     
     
@@ -834,6 +858,14 @@ void Chi2_Fitter::PlotToCanvas_N_sig_BarHist() {
     TCanvas* Nasym_c = new TCanvas("Nasym_c","Nasym_c",1200,800);
     Nasym_c->Divide(cols,rows);
 
+    // Open ROOT file for writing
+    std::string rootfile_path = OUT_DIR + OBS + "_Nsig_Asymmetry_BarHist.root";
+    TFile* fOut = new TFile(rootfile_path.c_str(), "RECREATE");
+
+    // Store histograms and legends for later writing
+    std::vector<TH1D*> hist_pos_vec, hist_neg_vec;
+    std::vector<TLegend*> leg_vec;
+
     for (size_t i = 0; i < BN_EDGS.size() - 1; ++i) {
         Nasym_c->cd(i+1);
         TH1D* h_pos = new TH1D(("h_pos_" + std::to_string(obs2_bin_idx) + "_" + std::to_string(i)).c_str(),"h_pos;#phi_{h};Signal Counts",PHIBN_EDGES.size()-1,PHIBN_EDGES.data());
@@ -854,6 +886,9 @@ void Chi2_Fitter::PlotToCanvas_N_sig_BarHist() {
         h_neg->SetLineColor(kBlack);
         h_neg->SetLineWidth(1); 
 
+        std::string title = Form("%s(%.2f,%.2f) Bin", OBS.c_str(), BN_EDGS[i], BN_EDGS[i+1]);
+        h_pos->SetTitle(title.c_str());
+
         h_pos->Draw("HIST");
         h_neg->Draw("HIST SAME");
 
@@ -862,11 +897,28 @@ void Chi2_Fitter::PlotToCanvas_N_sig_BarHist() {
         leg->AddEntry(h_neg,"Neg Helicity","l");
         leg->Draw();
 
-        std::string title = Form("%s(%.2f,%.2f) Bin", OBS.c_str(), BN_EDGS[i], BN_EDGS[i+1]);
-        h_pos->SetTitle(title.c_str());
-        
+        // Store pointers for saving to file
+        hist_pos_vec.push_back(h_pos);
+        hist_neg_vec.push_back(h_neg);
+        leg_vec.push_back(leg);
     }
+
+    // Write canvas to file
+    Nasym_c->Write();
+    // Save canvas as PNG
     Nasym_c->SaveAs((OUT_DIR + OBS + "_Nsig_Asymmetry_BarHist.png").c_str());
+
+    // Write all histograms and legends to file
+    for (size_t i = 0; i < hist_pos_vec.size(); ++i) {
+        fOut->cd();
+        hist_pos_vec[i]->Write();
+        hist_neg_vec[i]->Write();
+        leg_vec[i]->Write(("legend_" + std::to_string(i)).c_str());
+    }
+
+    fOut->Close();
+    delete fOut;
+
     delete Nasym_c;
 }
 void Chi2_Fitter::PlotSigFitGraph(TH1F& data_hist, TF1& fit_func, int helicity){

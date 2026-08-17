@@ -19,6 +19,7 @@ source /u/home/tjhellst/.Exclusive-Rho-Analysis-Pipeline/bin/activate
 INPUT_DIR=$1
 OUTPUT_DIR=$2
 INPUT_FILE_BASE=$3
+TYPE=$4
 #clasdis*.hipo
 
 # Enable nullglob to get empty array if no matches (instead of literal pattern)
@@ -40,7 +41,6 @@ if [ ${#FILES[@]} -eq 0 ]; then
 fi
 
 
-TYPE=pippi0
 
 echo "Running job ${SLURM_ARRAY_TASK_ID[@]} on file: ${FILES[$SLURM_ARRAY_TASK_ID]}"
 

@@ -163,7 +163,7 @@ int hipo2tree_pippi0(const char* hipoFile = "",
         if(hipo_is_mc){
             vec_mcparticles = clas12ana.load_mc_particles(_c12);
             clas12ana.fill_mc_event_variables(event,vec_mcparticles);
-            clas12ana.match_mc_to_reco(vec_particles, vec_mcparticles,_c12);
+            clas12ana.match_mc_to_reco(vec_particles, vec_mcparticles);
         }
         
         //then fill the tree with the vector of particles, event, and event_info

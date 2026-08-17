@@ -17,3 +17,4 @@ TTree_inspection.ipynb
 config/test_config.txt
 logs/*.log
 out/*
+*.png

@@ -128,14 +128,24 @@ void MLM_Fitter::RunMhFitMLM(int obs2bn_idx){
   TCut Mx_cut = TCut(("Mx>" + std::to_string(Mx_min) + " && Mx<" + std::to_string(Mx_max)).c_str());
   TCut obs2_cut = TCut((OBS2 + ">" + std::to_string(OBS2BN[obs2bn_idx]) + " && " + OBS2 + "<" + std::to_string(OBS2BN[obs2bn_idx+1])).c_str());
   TCut MinPhoCut = TCut(("pho1_E>" + std::to_string(MinPhoEnergy) + " && " + std::to_string(MinPhoEnergy) + "<pho2_E").c_str());
-  TCut pre_cut = Diphoton_cut && Mx_cut && obs2_cut && MinPhoCut;
+  TCut pre_cut;
+  if (TREENAME == "pippi0") {
+      std::cout << "  Creating/loading pippi0 pre-filtered tree..." << std::endl;
+      pre_cut = Diphoton_cut && Mx_cut && obs2_cut && MinPhoCut;
+  }
+  else if (TREENAME == "pippim") {
+      std::cout << "  Creating/loading pippim pre-filtered tree..." << std::endl;
+      pre_cut = Mx_cut && obs2_cut;
+  }
+  else {
+      throw std::runtime_error("Error: Unknown TREENAME specified: " + TREENAME);
+  }
   
-  // Create or open cached filtered tree
-  std::cout << "  Creating/loading pre-filtered tree..." << std::endl;
+
   
   // Generate unique filename based on input file, fit_type and obs2 bin
   std::string base_filename = GetBaseFilename(IN_FILE);
-  std::string cache_filename = CACHE_DIR + "/filtered_tree_" + base_filename + "_" + FIT_TYPE + "_MhFit_" + OBS2 + "bin" + 
+  std::string cache_filename = CACHE_DIR + "/filtered_tree_" + base_filename + "_MhFit_" + OBS2 + "bin" + 
                                std::to_string(obs2bn_idx) + "_" + 
                                std::to_string(OBS2BN[obs2bn_idx]) + "_" + 
                                std::to_string(OBS2BN[obs2bn_idx+1]) + "_" +
@@ -209,14 +219,25 @@ void MLM_Fitter::RunMxFitMLM(int obs2bn_idx){
   TCut Mh_cut = TCut(("Mh>" + std::to_string(Mh_min) + " && Mh<" + std::to_string(Mh_max)).c_str());
   TCut obs2_cut = TCut((OBS2 + ">" + std::to_string(OBS2BN[obs2bn_idx]) + " && " + OBS2 + "<" + std::to_string(OBS2BN[obs2bn_idx+1])).c_str());
   TCut MinPhoCut = TCut(("pho1_E>" + std::to_string(MinPhoEnergy) + " && " + std::to_string(MinPhoEnergy) + "<pho2_E").c_str());
-  TCut pre_cut = Diphoton_cut && Mh_cut && obs2_cut && MinPhoCut;
+  TCut pre_cut;
+  if (TREENAME == "pippi0") {
+      std::cout << "  Creating/loading pippi0 pre-filtered tree..." << std::endl;
+      pre_cut = Diphoton_cut && Mh_cut && obs2_cut && MinPhoCut;
+  }
+  else if (TREENAME == "pippim") {
+      std::cout << "  Creating/loading pippim pre-filtered tree..." << std::endl;
+      pre_cut = Mh_cut && obs2_cut;
+  }
+  else {
+      throw std::runtime_error("Error: Unknown TREENAME specified: " + TREENAME);
+  }
   
   // Create or open cached filtered tree
   std::cout << "  Creating/loading pre-filtered tree..." << std::endl;
   
   // Generate unique filename based on input file, fit_type and obs2 bin
   std::string base_filename = GetBaseFilename(IN_FILE);
-  std::string cache_filename = CACHE_DIR + "/filtered_tree_" + base_filename + "_" + FIT_TYPE + "_MxFit_" + OBS2 + "bin" + 
+  std::string cache_filename = CACHE_DIR + "/filtered_tree_" + base_filename + "_MxFit_" + OBS2 + "bin" + 
                                std::to_string(obs2bn_idx) + "_" + 
                                std::to_string(OBS2BN[obs2bn_idx]) + "_" + 
                                std::to_string(OBS2BN[obs2bn_idx+1]) + "_" +

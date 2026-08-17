@@ -3,19 +3,20 @@ import subprocess
 from pathlib import Path
 
 # === USER CONFIGURATION ===
-input_dirs = [Path("/lustre24/expphy/cache/clas12/rg-a/production/recon/fall2018/torus-1/pass2/main/train/nSidis"),Path("/lustre24/expphy/cache/clas12/rg-a/production/recon/spring2019/torus-1/pass2/dst/train/nSidis")] #[Path("/lustre24/expphy/cache/clas12/rg-a/production/montecarlo/clasdis_pass2/fa18_inb")] #[Path("/lustre24/expphy/cache/clas12/rg-a/production/recon/fall2018/torus-1/pass2/main/train/nSidis"),Path("/lustre24/expphy/cache/clas12/rg-a/production/recon/spring2019/torus-1/pass2/dst/train/nSidis")]#,Path("/lustre24/expphy/cache/clas12/rg-a/production/montecarlo/clasdis_pass2/fa18_inb")
+input_dirs = [Path("/cache/clas12/rg-a/production/recon/fall2018/torus-1/pass2/main/train/nSidis"),Path("/cache/clas12/rg-a/production/recon/spring2019/torus-1/pass2/dst/train/nSidis")] #[Path("/lustre24/expphy/cache/clas12/rg-a/production/montecarlo/clasdis_pass2/fa18_inb")] #[Path("/lustre24/expphy/cache/clas12/rg-a/production/recon/fall2018/torus-1/pass2/main/train/nSidis"),Path("/lustre24/expphy/cache/clas12/rg-a/production/recon/spring2019/torus-1/pass2/dst/train/nSidis")]#,Path("/lustre24/expphy/cache/clas12/rg-a/production/montecarlo/clasdis_pass2/fa18_inb")
 input_file_base = 'nSidis*.hipo' #corresponds with the file names that you want to run in input_dirs
 
-output_base = Path("/lustre24/expphy/volatile/clas12/users/tjhellst/ExclusiveRhoPlus_RGA_processedData")
-output_names = ["pippi0_fall2018_in_pass2","pippi0_spring2019_in_pass2"] # must correspond with the order of the entries in input_dirs
-final_root_output_name = "pippi0_merged_in_pass2" # name for the final merged root file (without .root extension)
+output_base = Path("/volatile/clas12/users/tjhellst/ExclusiveRhoPlus_RGA_processedData")
+output_names = ["pippim_fall2018_in_pass2","pippim_spring2019_in_pass2"] # must correspond with the order of the entries in input_dirs
+final_root_output_name = "pippim_merged_in_pass2" # name for the final merged root file (without .root extension)
 
-config_file = "config/pippi0_RGAinbending_tbinning.txt"
+config_file = "config/pippim_RGAinbending_tbinning.txt"
 
 dep_list = []  # Holds hadd job IDs for the final step
 
 fit_types = ["MhMLM","MxMLM","MhChi2","MxChi2"]
-TYPE = "pippi0" # used for naming the output directories and files, should correspond with the type of analysis you are doing (e.g. pippi0 or pippim)
+
+TYPE = "pippim" # used for naming the output directories and files, should correspond with the type of analysis you are doing (e.g. pippi0 or pippim)
 
 def sbatch_submit(args,dry_run=False):
     """Run sbatch and return the job ID."""
@@ -56,7 +57,7 @@ for i,input_dir in enumerate(input_dirs):
         "sbatch", 
         f"--array={array_spec}",
         "pipeline0_run_single_hipo.sbatch",
-        str(input_dir), str(output_dir),input_file_base, TYPE
+        str(input_dir), str(output_dir),input_file_base,TYPE
     ]
     jid_convert = sbatch_submit(convert_args)
 

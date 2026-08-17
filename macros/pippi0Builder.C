@@ -110,6 +110,9 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
     outtree->Branch("phi", &phih, "phi/D");
     outtree->Branch("Mx", &Mx, "Mx/D");
     outtree->Branch("Mh", &Mh, "Mh/D");
+
+    outtree->Branch("W", &W, "W/D");
+    outtree->Branch("y", &y, "y/D");
     
     outtree->Branch("z_true", &z_true, "z_true/D");
     outtree->Branch("pT_true", &pT_true, "pT_true/D");
@@ -123,8 +126,8 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
     outtree->Branch("Mdiphoton", &Mdiphoton, "Mdiphoton/D");
     outtree->Branch("Mdiphoton_true", &Mdiphoton_true, "Mdiphoton_true/D");
 
-    outtree->Branch("th", &th, "th/D");
-    outtree->Branch("th_true", &th_true, "th_true/D");
+    // outtree->Branch("th", &th, "th/D");
+    // outtree->Branch("th_true", &th_true, "th_true/D");
 
     outtree->Branch("cth", &cth, "cth/D");
     outtree->Branch("cth_true", &cth_true, "cth_true/D");
@@ -157,16 +160,16 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
     outtree->Branch("t_elec",&t_elec,"t_elec/D");
     outtree->Branch("t_elec_true",&t_elec_true,"t_elec_true/D");
 
-    outtree->Branch("px_neutron",&px_neutron,"px_neutron/D");
-    outtree->Branch("py_neutron",&py_neutron,"py_neutron/D");
-    outtree->Branch("pz_neutron",&pz_neutron,"pz_neutron/D");
-    outtree->Branch("sector_neutron",&sector_neutron,"sector_neutron/D");
-    outtree->Branch("neutralhit_in_sector_neutron",&neutralhit_in_sector_neutron,"neutralhit_in_sector_neutron/D");
+    // outtree->Branch("px_neutron",&px_neutron,"px_neutron/D");
+    // outtree->Branch("py_neutron",&py_neutron,"py_neutron/D");
+    // outtree->Branch("pz_neutron",&pz_neutron,"pz_neutron/D");
+    // outtree->Branch("sector_neutron",&sector_neutron,"sector_neutron/D");
+    // outtree->Branch("neutralhit_in_sector_neutron",&neutralhit_in_sector_neutron,"neutralhit_in_sector_neutron/D");
     
-    outtree->Branch("px_neutron_true",&px_neutron_true,"px_neutron_true/D");
-    outtree->Branch("py_neutron_true",&py_neutron_true,"py_neutron_true/D");
-    outtree->Branch("pz_neutron_true",&pz_neutron_true,"pz_neutron_true/D");
-    outtree->Branch("sector_neutron_true",&sector_neutron_true,"sector_neutron_true/D");
+    // outtree->Branch("px_neutron_true",&px_neutron_true,"px_neutron_true/D");
+    // outtree->Branch("py_neutron_true",&py_neutron_true,"py_neutron_true/D");
+    // outtree->Branch("pz_neutron_true",&pz_neutron_true,"pz_neutron_true/D");
+    // outtree->Branch("sector_neutron_true",&sector_neutron_true,"sector_neutron_true/D");
 
     outtree->Branch("varphi",&varphi,"varphi/D");
     outtree->Branch("cosvarphi",&cosvarphi,"cosvarphi/D");
@@ -327,38 +330,36 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
                         Mx_true = (trueneutron).M();
 
                         //find the projected 3 momentum of the missing mass particle (assuming there is one missing mass particle with mass 1GeV)
+                        // px_neutron = (neutron).Px();
+                        // px_neutron_true = (trueneutron).Px();
+                        // py_neutron = (neutron).Py();
+                        // py_neutron_true = (trueneutron).Py();
+                        // pz_neutron = (neutron).Pz();
+                        // pz_neutron_true = (trueneutron).Pz();
+                        // //calculate which sector a neutral particle with this momentum would hit in the CLAS12 EC - based on sector divisions for DC middle layer
+                        // double phi = 180/PI *kin.phi(px_neutron,py_neutron);
+                        // if(phi<30 && phi>=-30){sector_neutron = 1;}
+                        // else if(phi<90 && phi>=30){sector_neutron = 2;}
+                        // else if(phi<150 && phi>=90){sector_neutron = 3;}
+                        // else if(phi>=150 || phi<-150){sector_neutron = 4;}
+                        // else if(phi<-90 && phi>=-150){sector_neutron = 5;}
+                        // else if(phi<-30 && phi>-90){sector_neutron = 6;}
 
-            
-                        px_neutron = (neutron).Px();
-                        px_neutron_true = (trueneutron).Px();
-                        py_neutron = (neutron).Py();
-                        py_neutron_true = (trueneutron).Py();
-                        pz_neutron = (neutron).Pz();
-                        pz_neutron_true = (trueneutron).Pz();
-                        //calculate which sector a neutral particle with this momentum would hit in the CLAS12 EC - based on sector divisions for DC middle layer
-                        double phi = 180/PI *kin.phi(px_neutron,py_neutron);
-                        if(phi<30 && phi>=-30){sector_neutron = 1;}
-                        else if(phi<90 && phi>=30){sector_neutron = 2;}
-                        else if(phi<150 && phi>=90){sector_neutron = 3;}
-                        else if(phi>=150 || phi<-150){sector_neutron = 4;}
-                        else if(phi<-90 && phi>=-150){sector_neutron = 5;}
-                        else if(phi<-30 && phi>-90){sector_neutron = 6;}
+                        // double phi_true = 180/PI *kin.phi(px_neutron_true,py_neutron_true);
+                        // if(phi_true<30 && phi_true>=-30){sector_neutron_true = 1;}
+                        // else if(phi_true<90 && phi_true>=30){sector_neutron_true = 2;}
+                        // else if(phi_true<150 && phi_true>=90){sector_neutron_true = 3;}
+                        // else if(phi_true>=150 || phi_true<-150){sector_neutron_true = 4;}
+                        // else if(phi_true<-90 && phi_true>=-150){sector_neutron_true = 5;}
+                        // else if(phi_true<-30 && phi_true>-90){sector_neutron_true = 6;}
 
-                        double phi_true = 180/PI *kin.phi(px_neutron_true,py_neutron_true);
-                        if(phi_true<30 && phi_true>=-30){sector_neutron_true = 1;}
-                        else if(phi_true<90 && phi_true>=30){sector_neutron_true = 2;}
-                        else if(phi_true<150 && phi_true>=90){sector_neutron_true = 3;}
-                        else if(phi_true>=150 || phi_true<-150){sector_neutron_true = 4;}
-                        else if(phi_true<-90 && phi_true>=-150){sector_neutron_true = 5;}
-                        else if(phi_true<-30 && phi_true>-90){sector_neutron_true = 6;}
-
-                        //determine if this sector has a neutral particle hit
-                        for (int m=0;m<Nmax;m++){
-                            if(pcal_sector[m]!=sector_neutron || ecin_sector[m]!=sector_neutron || ecout_sector[m]!=sector_neutron || m==j || m==k )continue;
-                            if(pid[m]==22||pid[m]==2112){
-                                neutralhit_in_sector_neutron = 1;
-                            }
-                        }
+                        // //determine if this sector has a neutral particle hit
+                        // for (int m=0;m<Nmax;m++){
+                        //     if(pcal_sector[m]!=sector_neutron || ecin_sector[m]!=sector_neutron || ecout_sector[m]!=sector_neutron || m==j || m==k )continue;
+                        //     if(pid[m]==22||pid[m]==2112){
+                        //         neutralhit_in_sector_neutron = 1;
+                        //     }
+                        // }
                         
                         //build leftover particle list:
                         Nleftover = 0;
@@ -395,7 +396,7 @@ int pippi0Builder(const char *input_file="out/test_pippi0/nSidis_005032.root"){
                         th_true = kin.com_th(truepip,truediphoton);
 
                         cth = cos(th);
-                        cth_true = cos(th);
+                        cth_true = cos(th_true);
                         varphi = kin.varphi(q,pip,diphoton);
                         truevarphi = kin.varphi(trueq,truepip,truediphoton);
                         cosvarphi = cos(varphi);

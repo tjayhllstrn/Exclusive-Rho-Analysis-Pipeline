@@ -17,5 +17,6 @@ pwd
 MC_file=$1
 Data_file=$2
 
+echo running with MC file: $MC_file and Data file: $Data_file
 
 clas12root -l -b -q "macros/MC_data_loss.cpp(\"$MC_file\",\"$Data_file\")"
